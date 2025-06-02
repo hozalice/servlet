@@ -1,11 +1,37 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard RH</title>
-    <style>
+<nav class="sidebar">
+  <div class="sidebar-header">
+      <h1>RH System</h1>
+  </div>
+  <ul class="nav-menu">
+      <li class="nav-item">
+          <a href="dashboard.jsp" class="nav-link active">Dashboard</a>
+      </li>
+      <li class="nav-item">
+          <a href="/Employer-Controller" class="nav-link">Employés</a>
+      </li>
+      <li class="nav-item">
+          <a href="#" class="nav-link">Paiements</a>
+      </li>
+      <li class="nav-item">
+          <a href="/Salary-Slip" class="nav-link">Fiches de paie</a>
+      </li>
+      <li class="nav-item">
+      <li class="nav-item">
+          <a href="#" class="nav-link">Congés</a>
+      </li>
+      <li class="nav-item">
+          <a href="#" class="nav-link">Formation</a>
+      </li>
+      <li class="nav-item">
+          <a href="#" class="nav-link">Évaluation</a>
+      </li>
+      <li class="nav-item">
+          <a href="#" class="nav-link">Rapports</a>
+      </li>
+  </ul>
+</nav>
+
+  <style>
         * {
             margin: 0;
             padding: 0;
@@ -109,34 +135,3 @@
             font-weight: 600;
         }
     </style>
-</head>
-<body>
-<%@include file="sidebar.jsp"%>
-
-    <main class="main-content">
-        <div class="dashboard-header">
-            <h2>Tableau de bord</h2>
-            <p>Bienvenue dans votre espace de gestion RH</p>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Employés actifs</h3>
-                <div class="value">127</div>
-            </div>
-            <div class="stat-card">
-                <h3>Nouveaux ce mois</h3>
-                <div class="value">4</div>
-            </div>
-            <div class="stat-card">
-                <h3>Congés en cours</h3>
-                <div class="value">8</div>
-            </div>
-            <div class="stat-card">
-                <h3>Évaluations en attente</h3>
-                <div class="value">12</div>
-            </div>
-        </div>
-    </main>
-</body>
-</html>
