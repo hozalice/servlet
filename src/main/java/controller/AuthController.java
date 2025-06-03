@@ -20,7 +20,7 @@ import java.io.InputStream;
 @WebServlet(name = "AuthController", value = "/Auth-Controller")
 public class AuthController extends HttpServlet {
     
-    private static final String LOGIN_API_URL = "http://erpnext.localhost:8000/api/method/login";
+    private static final String LOGIN_API_URL = "http://172.25.36.0:8000/api/method/login";
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {

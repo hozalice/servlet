@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
 @WebServlet(name = "EmployerController", value = "/Employer-Controller")
 public class EmployerController extends HttpServlet {
     
-    private static final String API_BASE_URL = "http://erpnext.localhost:8000/api/resource/Employee";
+    private static final String API_BASE_URL = "http://172.25.36.0:8000/api/resource/Employee";
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {

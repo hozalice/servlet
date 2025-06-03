@@ -108,35 +108,114 @@
             font-size: 24px;
             font-weight: 600;
         }
+
+        .import-section {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 3rem;
+        }
+
+        .import-section h2 {
+            margin-bottom: 1.5rem;
+            color: #1F272E;
+        }
+
+        .import-section label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #4C5A67;
+            font-weight: 500;
+        }
+
+        .import-section input[type="file"] {
+            width: 100%;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        .import-section button {
+            background-color: #2490EF;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .import-section button:hover {
+            background-color: #1a76c2;
+        }
+
+        .import-section .message-success {
+            color: green;
+            margin-top: 1rem;
+        }
+
+        .import-section .message-error {
+            color: red;
+            margin-top: 1rem;
+        }
     </style>
 </head>
 <body>
-<%@include file="sidebar.jsp"%>
+<%@ include file="sidebar.jsp" %>
 
-    <main class="main-content">
-        <div class="dashboard-header">
-            <h2>Tableau de bord</h2>
-            <p>Bienvenue dans votre espace de gestion RH</p>
-        </div>
+<main class="main-content">
+    <div class="dashboard-header">
+        <h2>Tableau de bord</h2>
+        <p>Bienvenue dans votre espace de gestion RH</p>
+    </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Employés actifs</h3>
-                <div class="value">127</div>
-            </div>
-            <div class="stat-card">
-                <h3>Nouveaux ce mois</h3>
-                <div class="value">4</div>
-            </div>
-            <div class="stat-card">
-                <h3>Congés en cours</h3>
-                <div class="value">8</div>
-            </div>
-            <div class="stat-card">
-                <h3>Évaluations en attente</h3>
-                <div class="value">12</div>
-            </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Employés actifs</h3>
+            <div class="value">127</div>
         </div>
-    </main>
+        <div class="stat-card">
+            <h3>Nouveaux ce mois</h3>
+            <div class="value">4</div>
+        </div>
+        <div class="stat-card">
+            <h3>Congés en cours</h3>
+            <div class="value">8</div>
+        </div>
+        <div class="stat-card">
+            <h3>Évaluations en attente</h3>
+            <div class="value">12</div>
+        </div>
+    </div>
+
+    <!-- Section d'importation CSV -->
+    <div class="import-section">
+        <h2>Import des fichiers CSV</h2>
+
+        <form action="import-csv" method="post" enctype="multipart/form-data">
+            <div>
+                <label for="employesCsv">Fichier Employés (.csv) :</label>
+                <input type="file" name="employesCsv" id="employesCsv" accept=".csv" required />
+            </div>
+            <div>
+                <label for="structuresCsv">Fichier Structures Salariales (.csv) :</label>
+                <input type="file" name="structuresCsv" id="structuresCsv" accept=".csv" required />
+            </div>
+            <div>
+                <label for="paiesCsv">Fichier Paies (.csv) :</label>
+                <input type="file" name="paiesCsv" id="paiesCsv" accept=".csv" required />
+            </div>
+            <button type="submit">Importer</button>
+        </form>
+
+        <%-- Affichage uniquement du message de succès --%>
+        <% if (request.getAttribute("message") != null) { %>
+        <p class="message-success"><%= request.getAttribute("message") %></p>
+        <% } %>
+    </div>
+</main>
 </body>
 </html>

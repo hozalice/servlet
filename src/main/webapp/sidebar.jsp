@@ -4,7 +4,7 @@
   </div>
   <ul class="nav-menu">
       <li class="nav-item">
-          <a href="dashboard.jsp" class="nav-link active">Dashboard</a>
+          <a href="dashboard.jsp" class="nav-link active">Importation de données</a>
       </li>
       <li class="nav-item">
           <a href="/Employer-Controller" class="nav-link">Employés</a>
