@@ -195,18 +195,18 @@
     <div class="import-section">
         <h2>Import des fichiers CSV</h2>
 
-        <form action="import-csv" method="post" enctype="multipart/form-data">
+        <form action="/import" method="post" enctype="multipart/form-data">
             <div>
                 <label for="employesCsv">Fichier Employés (.csv) :</label>
-                <input type="file" name="employesCsv" id="employesCsv" accept=".csv" required />
+                <input type="file" name="employees" id="employesCsv" accept=".csv" required />
             </div>
             <div>
                 <label for="structuresCsv">Fichier Structures Salariales (.csv) :</label>
-                <input type="file" name="structuresCsv" id="structuresCsv" accept=".csv" required />
+                <input type="file" name="structures" id="structuresCsv" accept=".csv" required />
             </div>
             <div>
                 <label for="paiesCsv">Fichier Paies (.csv) :</label>
-                <input type="file" name="paiesCsv" id="paiesCsv" accept=".csv" required />
+                <input type="file" name="paies" id="paiesCsv" accept=".csv" required />
             </div>
             <button type="submit">Importer</button>
         </form>
