@@ -486,7 +486,33 @@ public class Import extends HttpServlet {
 
     private Result creerEmploye(EmployeDto e, String sid) {
         try {
+            // Vérifier d'abord si l'employé existe déjà
+            String filter = "[[\"employee_number\",\"=\",\"" + e.getRef() + "\"]]";
+            String encodedFilter = URLEncoder.encode(filter, StandardCharsets.UTF_8.toString());
+            String urlCheck = apiBaseUrl + "Employee?filters=" + encodedFilter;
+
+            HttpRequest requestCheck = HttpRequest.newBuilder()
+                    .uri(URI.create(urlCheck))
+                    .header("Cookie", "sid=" + sid)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> responseCheck = httpClient.send(requestCheck, HttpResponse.BodyHandlers.ofString());
+
+            if (responseCheck.statusCode() == 200) {
+                JsonObject jsonCheck = JsonParser.parseString(responseCheck.body()).getAsJsonObject();
+                if (jsonCheck.has("data")) {
+                    JsonArray dataArray = jsonCheck.getAsJsonArray("data");
+                    if (dataArray.size() > 0) {
+                        System.out.println("Employé déjà existant: " + e.getRef());
+                        return new Result(true, null); // Employé déjà existant
+                    }
+                }
+            }
+
+            // Créer l'employé avec des données complètes
             JsonObject data = new JsonObject();
+            data.addProperty("doctype", "Employee");
             data.addProperty("employee_name", e.getNom() + " " + e.getPrenom());
             data.addProperty("employee_number", e.getRef());
             data.addProperty("first_name", e.getNom());
@@ -495,6 +521,7 @@ public class Import extends HttpServlet {
             data.addProperty("date_of_birth", new SimpleDateFormat("yyyy-MM-dd").format(e.getDateNaissance()));
             data.addProperty("date_of_joining", new SimpleDateFormat("yyyy-MM-dd").format(e.getDateEmbauche()));
             data.addProperty("company", e.getCompany());
+            data.addProperty("status", "Active");
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiBaseUrl + "Employee"))
@@ -506,13 +533,14 @@ public class Import extends HttpServlet {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
+                System.out.println("Employé créé avec succès: " + e.getRef());
                 return new Result(true, null);
             } else {
-                return new Result(false, response.body());
+                return new Result(false, "Erreur création employé: " + response.body());
             }
 
         } catch (Exception ex) {
-            return new Result(false, "Exception: " + ex.getMessage());
+            return new Result(false, "Exception création employé: " + ex.getMessage());
         }
     }
 
@@ -596,7 +624,7 @@ public class Import extends HttpServlet {
             cal.setTime(paie.getMois());
             cal.set(Calendar.DAY_OF_MONTH, 1);
             Date moisDebut = cal.getTime();
-
+            System.out.println("reference emplyer ----------------------------------------->"+paie.getRefEmploye());
             String employeeName = getEmployeeNameByEmployeeNumber(paie.getRefEmploye(), sid); // Ajout du paramètre sid
 
             JsonObject data = new JsonObject();
@@ -662,8 +690,11 @@ public class Import extends HttpServlet {
             cal.add(Calendar.DAY_OF_MONTH, -1);
             Date moisFin = cal.getTime();
 
-            // Construction et encodage correct du filtre
-            String filter = "[[\"employee\",\"=\",\"" + paie.getRefEmploye() + "\"]," +
+            // Récupération correcte du nom de l'employé
+            String employeeName = getEmployeeNameByEmployeeNumber(paie.getRefEmploye(), sid);
+
+            // Vérification si le Salary Slip existe déjà
+            String filter = "[[\"employee\",\"=\",\"" + employeeName + "\"]," +
                     "[\"start_date\",\">=\",\"" + new SimpleDateFormat("yyyy-MM-dd").format(moisDebut) + "\"]," +
                     "[\"end_date\",\"<=\",\"" + new SimpleDateFormat("yyyy-MM-dd").format(moisFin) + "\"]]";
             String encodedFilter = URLEncoder.encode(filter, StandardCharsets.UTF_8.toString());
@@ -690,14 +721,16 @@ public class Import extends HttpServlet {
                 }
             }
 
-            String employeeName = getEmployeeNameByEmployeeNumber(paie.getRefEmploye(), sid);
-
+            // Création du Salary Slip avec docstatus = 1 directement
             JsonObject data = new JsonObject();
             data.addProperty("doctype", "Salary Slip");
             data.addProperty("employee", employeeName);
+            data.addProperty("employee_name", getEmployeeFullNameByEmployeeNumber(paie.getRefEmploye(), sid));
             data.addProperty("salary_structure", paie.getSalaire());
             data.addProperty("start_date", new SimpleDateFormat("yyyy-MM-dd").format(moisDebut));
             data.addProperty("end_date", new SimpleDateFormat("yyyy-MM-dd").format(moisFin));
+            data.addProperty("posting_date", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+            data.addProperty("docstatus", 1); // DIRECTEMENT SOUMIS
 
             HttpRequest requestPost = HttpRequest.newBuilder()
                     .uri(URI.create(apiBaseUrl + "Salary%20Slip"))
@@ -712,32 +745,12 @@ public class Import extends HttpServlet {
                 return new Result(false, "POST Salary Slip failed: " + responsePost.body());
             }
 
-            JsonObject jsonPost = JsonParser.parseString(responsePost.body()).getAsJsonObject();
-            String name = jsonPost.getAsJsonObject("data").get("name").getAsString();
-
-            JsonObject submitPayload = new JsonObject();
-            submitPayload.addProperty("docstatus", 1);
-
-            HttpRequest requestSubmit = HttpRequest.newBuilder()
-                    .uri(URI.create(apiBaseUrl + "Salary%20Slip/" + name))
-                    .header("Content-Type", "application/json")
-                    .header("Cookie", "sid=" + sid)
-                    .PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(submitPayload)))
-                    .build();
-
-            HttpResponse<String> responseSubmit = httpClient.send(requestSubmit, HttpResponse.BodyHandlers.ofString());
-
-            if (responseSubmit.statusCode() != 200) {
-                return new Result(false, "Submit Salary Slip failed: " + responseSubmit.body());
-            }
-
             return new Result(true, null);
 
         } catch (Exception ex) {
             return new Result(false, "Exception: " + ex.getMessage());
         }
     }
-
 
     private String getEmployeeNameByEmployeeNumber(String employeeNumber, String sid) throws Exception {
         String filter = "[[\"employee_number\",\"=\",\"" + employeeNumber + "\"]]";
@@ -762,15 +775,50 @@ public class Import extends HttpServlet {
             JsonArray data = json.getAsJsonArray("data");
             if (data.size() > 0) {
                 JsonObject employee = data.get(0).getAsJsonObject();
-                System.out.println(employee.get("name").getAsString());
-                return employee.get("name").getAsString(); // c'est le champ `name`, pas `employee_number`
+                String employeeName = employee.get("name").getAsString();
+                System.out.println("Employee trouvé: " + employeeName + " pour le numéro: " + employeeNumber);
+                return employeeName;
             }
         }
 
         throw new Exception("Aucun employé trouvé avec le numéro : " + employeeNumber);
     }
+    private String getEmployeeFullNameByEmployeeNumber(String employeeNumber, String sid) throws Exception {
+        String filter = "[[\"employee_number\",\"=\",\"" + employeeNumber + "\"]]";
+        String encodedFilter = URLEncoder.encode(filter, StandardCharsets.UTF_8.toString());
+        String fields = URLEncoder.encode("[\"employee_name\"]", StandardCharsets.UTF_8.toString());
+        String url = apiBaseUrl + "Employee?filters=" + encodedFilter + "&fields=" + fields;
 
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Cookie", "sid=" + sid)
+                .GET()
+                .build();
 
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new Exception("Erreur lors de la récupération du nom complet de l'employé: " + response.body());
+        }
+
+        JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
+
+        if (json.has("data")) {
+            JsonArray data = json.getAsJsonArray("data");
+            if (data.size() > 0) {
+                JsonObject employee = data.get(0).getAsJsonObject();
+                if (employee.has("employee_name")) {
+                    return employee.get("employee_name").getAsString();
+                }
+            }
+        }
+
+        throw new Exception("Aucun employé trouvé avec le numéro : " + employeeNumber);
+    }
+    public static boolean resetdata(String sid){
+
+        return true;
+    }
 
     // Classes DTO
     public static class EmployeDto {
@@ -877,5 +925,8 @@ public class Import extends HttpServlet {
             this.translatedGender = translatedGender;
             this.errorMessage = errorMessage;
         }
+
     }
+
+
 }
