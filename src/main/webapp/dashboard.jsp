@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard RH</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         * {
             margin: 0;
@@ -161,14 +162,53 @@
             color: red;
             margin-top: 1rem;
         }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .reset-btn {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+        }
+        
+        .reset-btn:hover {
+            background-color: #e63939;
+        }
+        
+        .reset-btn i {
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
 <%@ include file="sidebar.jsp" %>
 
 <main class="main-content">
-    <div class="dashboard-header">
+    <div class="header">
         <h2>Tableau de bord</h2>
+        <form action="Import" method="post" style="margin: 0;">
+            <input type="hidden" name="action" value="resetdata">
+            <button type="submit" class="reset-btn" onclick="return confirm('Êtes-vous sûr de vouloir réinitialiser toutes les données ? Cette action est irréversible.');">
+                <i class="fas fa-trash-alt"></i>
+                Réinitialiser les données
+            </button>
+        </form>
+    </div>
+    <div class="dashboard-header">
         <p>Bienvenue dans votre espace de gestion RH</p>
     </div>
 
@@ -178,8 +218,24 @@
             <div class="value">127</div>
         </div>
         <div class="stat-card">
-            <h3>Nouveaux ce mois</h3>
-            <div class="value">4</div>
+            <div class="container-fluid">
+                <h1 class="mt-4">Tableau de bord</h1>
+                
+                <!-- Formulaire de réinitialisation -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-redo-alt mr-1"></i>
+                        Réinitialisation des données
+                    </div>
+                    <div class="card-body">
+                        <form action="import" method="get">
+                            <input type="hidden" name="action" value="resetdata">
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir réinitialiser toutes les données ? Cette action est irréversible.');">
+                                <i class="fas fa-trash-alt mr-1"></i> Réinitialiser les données
+                            </button>
+                        </form>
+                    </div>
+                </div>
         </div>
         <div class="stat-card">
             <h3>Congés en cours</h3>
@@ -217,5 +273,67 @@
         <% } %>
     </div>
 </main>
+
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<script>
+    function confirmReset() {
+        Swal.fire({
+            title: 'Êtes-vous sûr ?',
+            text: "Cette action va réinitialiser toutes les données. Êtes-vous sûr de vouloir continuer ?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Oui, réinitialiser',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                resetData();
+            }
+        });
+    }
+
+    function resetData() {
+        Swal.fire({
+            title: 'Réinitialisation en cours',
+            text: 'Veuillez patienter...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // Récupérer le SID du cookie
+        const sid = document.cookie.split('; ').find(row => row.startsWith('sid='))?.split('=')[1] || '';
+        
+        // Envoyer le SID en tant que paramètre d'URL
+        fetch('import?action=resetdata&sid=' + encodeURIComponent(sid), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire(
+                    'Succès !',
+                    'Les données ont été réinitialisées avec succès.',
+                    'success'
+                );
+            } else {
+                throw new Error(data.message || 'Erreur lors de la réinitialisation');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            Swal.fire(
+                'Erreur',
+                'Une erreur est survenue lors de la réinitialisation : ' + (error.message || 'Erreur inconnue'),
+                'error'
+            );
+        });
+    }
+</script>
 </body>
 </html>

@@ -29,9 +29,19 @@ public class Import extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     private final HttpClient httpClient;
-    private final String apiBaseUrl = "http://erpnext.localhost:8000/api/resource/";
+    private final String apiBaseUrl = "http://172.25.36.0:8000/api/resource/";
     private final Gson gson;
     private final SimpleDateFormat dateFormat;
+
+    String sid;
+
+    public String getSid() {
+        return sid;
+    }
+
+    public void setSid(String sid) {
+        this.sid = sid;
+    }
 
     public Import() {
         this.httpClient = HttpClient.newHttpClient();
@@ -42,27 +52,36 @@ public class Import extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // Configuration de la réponse
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        // Gestion de la session et du SID
-        HttpSession session = request.getSession(true); // true pour créer si nécessaire
-        // ⚠️ Récupération du sid depuis la session. Assurez-vous qu'il provient d'un login valide ERPNext
-        String sid = (String) session.getAttribute("sid");
-        System.out.println("SID: " + sid);
-
+        // Récupération du SID
+        String sid = getSid();
         if (sid == null || sid.isEmpty()) {
-            sendErrorResponse(response, "Session invalide. Veuillez vous reconnecter.");
+            HttpSession session = request.getSession(true);
+            sid = (String) session.getAttribute("sid");
+            setSid(sid);
+        }
+
+        // Gestion de la réinitialisation des données
+        if ("resetdata".equals(request.getParameter("action"))) {
+            boolean success = resetdata(sid);
+            response.sendRedirect("dashboard.jsp?reset=" + (success ? "success" : "error"));
             return;
         }
 
-        // Ajout du cookie SID dans la réponse
-        Cookie cookie = new Cookie("sid", sid);
-        cookie.setMaxAge(-1); // Cookie de session
-        response.addCookie(cookie);
+        // Configuration de la réponse pour les autres actions
+        try (PrintWriter out = response.getWriter()) {
+            if (sid == null || sid.isEmpty()) {
+                sendErrorResponse(response, "Session invalide. Veuillez vous reconnecter.");
+                return;
+            }
 
-        try {
+            // Ajout du cookie SID dans la réponse
+            Cookie cookie = new Cookie("sid", sid);
+            cookie.setMaxAge(-1); // Cookie de session
+            response.addCookie(cookie);
+
             // Récupérer les fichiers uploadés
             Part employeesPart = request.getPart("employees");
             Part structuresPart = request.getPart("structures");
@@ -77,8 +96,7 @@ public class Import extends HttpServlet {
                     employeesPart.getInputStream(),
                     structuresPart.getInputStream(),
                     paiesPart.getInputStream(),
-                    request
-            );
+                    request);
 
             JsonObject result = new JsonObject();
             if (errors.isEmpty()) {
@@ -89,10 +107,11 @@ public class Import extends HttpServlet {
                 result.add("errors", gson.toJsonTree(errors));
             }
 
-            response.getWriter().write(gson.toJson(result));
+            out.write(gson.toJson(result));
 
         } catch (Exception e) {
             e.printStackTrace();
+            resetdata(getSid());
             sendErrorResponse(response, "Erreur lors de l'import: " + e.getMessage());
         }
     }
@@ -105,19 +124,12 @@ public class Import extends HttpServlet {
         response.getWriter().write(gson.toJson(error));
     }
 
-    private String getSessionId(HttpServletRequest request) throws Exception {
-        // Essayer d'obtenir le SID depuis la session
-        HttpSession session = request.getSession();
-        String sid = (String) session.getAttribute("sid");
-        System.out.println("sid d ato anaty fanction "+ sid);
-        return sid;
-    }
-
     public List<String> importDataAsync(InputStream employesCsv, InputStream structuresCsv,
-                                        InputStream paiesCsv, HttpServletRequest request) throws Exception {
+            InputStream paiesCsv, HttpServletRequest request) throws Exception {
         List<String> erreurs = new ArrayList<>();
         HttpSession session = request.getSession(true); // true pour créer si nécessaire
-        // ⚠️ Récupération du sid depuis la session. Assurez-vous qu'il provient d'un login valide ERPNext
+        // ⚠️ Récupération du sid depuis la session. Assurez-vous qu'il provient d'un
+        // login valide ERPNext
         String sid = (String) session.getAttribute("sid");
         String Username = (String) session.getAttribute("loggedInUser");
         System.out.println("SID: " + sid);
@@ -125,15 +137,18 @@ public class Import extends HttpServlet {
 
         // 1. Charger et valider les employés
         List<EmployeDto> employes = lireEmployesAsync(employesCsv, erreurs);
-        if (!erreurs.isEmpty()) return erreurs;
+        if (!erreurs.isEmpty())
+            return erreurs;
 
         // 2. Charger et valider les structures salariales
         List<StructureDto> structures = lireStructuresAsync(structuresCsv, erreurs);
-        if (!erreurs.isEmpty()) return erreurs;
+        if (!erreurs.isEmpty())
+            return erreurs;
 
         // 3. Charger et valider les paies
         List<PaieDto> paies = lirePaiesAsync(paiesCsv, erreurs);
-        if (!erreurs.isEmpty()) return erreurs;
+        if (!erreurs.isEmpty())
+            return erreurs;
 
         // 4. Créer / vérifier les companies
         Set<String> companies = new HashSet<>();
@@ -147,7 +162,8 @@ public class Import extends HttpServlet {
                 erreurs.add("Erreur création company: " + company + " - Détail: " + result.errorMessage);
             }
         }
-        if (!erreurs.isEmpty()) return erreurs;
+        if (!erreurs.isEmpty())
+            return erreurs;
 
         // 5. Créer les employés
         for (EmployeDto emp : employes) {
@@ -159,7 +175,8 @@ public class Import extends HttpServlet {
                 emp.setGenre(genderResult.translatedGender);
             }
         }
-        if (!erreurs.isEmpty()) return erreurs;
+        if (!erreurs.isEmpty())
+            return erreurs;
 
         for (EmployeDto emp : employes) {
             Result result = creerEmploye(emp, sid);
@@ -167,7 +184,8 @@ public class Import extends HttpServlet {
                 erreurs.add("Erreur création employe pour " + emp.getRef() + " - " + result.errorMessage);
             }
         }
-        if (!erreurs.isEmpty()) return erreurs;
+        if (!erreurs.isEmpty())
+            return erreurs;
 
         // 6. Créer les structures salariales regroupées
         Map<String, List<StructureDto>> groupes = structures.stream()
@@ -179,7 +197,8 @@ public class Import extends HttpServlet {
                 erreurs.add("Erreur création de " + entry.getKey() + " : " + result.errorMessage);
             }
         }
-        if (!erreurs.isEmpty()) return erreurs;
+        if (!erreurs.isEmpty())
+            return erreurs;
 
         // 7. Assigner les structures salariales
         for (PaieDto p : paies) {
@@ -189,7 +208,8 @@ public class Import extends HttpServlet {
                         " mois " + dateFormat.format(p.getMois()) + " - Détail: " + result.errorMessage);
             }
         }
-        if (!erreurs.isEmpty()) return erreurs;
+        if (!erreurs.isEmpty())
+            return erreurs;
 
         // 8. Créer les paies
         for (PaieDto p : paies) {
@@ -238,7 +258,8 @@ public class Import extends HttpServlet {
 
             while ((line = reader.readLine()) != null) {
                 lineNumber++;
-                if (lineNumber == 1) continue; // Skip header
+                if (lineNumber == 1)
+                    continue; // Skip header
 
                 String[] parts = line.split(",");
                 System.out.println("parts: " + parts.length);
@@ -263,6 +284,8 @@ public class Import extends HttpServlet {
 
                     liste.add(employe);
                 } catch (ParseException e) {
+                    // Appel à resetdata sans stocker le résultat car non utilisé
+                    resetdata(getSid());
                     erreurs.add("Fichier Employés : ligne " + lineNumber + " - Date invalide");
                 }
             }
@@ -280,7 +303,8 @@ public class Import extends HttpServlet {
 
             while ((line = reader.readLine()) != null) {
                 lineNumber++;
-                if (lineNumber == 1) continue; // Skip header
+                if (lineNumber == 1)
+                    continue; // Skip header
 
                 String[] parts = line.split(",");
                 if (parts.length < 6) {
@@ -322,7 +346,8 @@ public class Import extends HttpServlet {
 
             while ((line = reader.readLine()) != null) {
                 lineNumber++;
-                if (lineNumber == 1) continue; // Skip header
+                if (lineNumber == 1)
+                    continue; // Skip header
 
                 String[] parts = line.split(",");
                 if (parts.length != 4) {
@@ -342,6 +367,8 @@ public class Import extends HttpServlet {
 
                     liste.add(paie);
                 } catch (ParseException | NumberFormatException e) {
+                    // Appel à resetdata sans stocker le résultat car non utilisé
+                    resetdata(getSid());
                     erreurs.add("Fichier Paies : ligne " + lineNumber + " - Données invalides");
                 }
             }
@@ -349,13 +376,15 @@ public class Import extends HttpServlet {
 
         return liste;
     }
+
     private Result creerCompanySiNonExistante(String companyName, String sid) {
         try {
-            String baseUrl = "http://erpnext.localhost:8000/api/resource/";
+            String baseUrl = "http://172.25.36.0:8000/api/resource/";
 
             // Vérification de l'existence d'une Holiday List
             String holidayListEndpoint = "Holiday%20List";
-            String filtersHoliday = URLEncoder.encode("[[\"holiday_list_name\",\"=\",\"holiday\"]]", StandardCharsets.UTF_8);
+            String filtersHoliday = URLEncoder.encode("[[\"holiday_list_name\",\"=\",\"holiday\"]]",
+                    StandardCharsets.UTF_8);
             String urlCheckHoliday = baseUrl + holidayListEndpoint + "?filters=" + filtersHoliday;
 
             HttpRequest requestCheckHoliday = HttpRequest.newBuilder()
@@ -364,13 +393,15 @@ public class Import extends HttpServlet {
                     .header("Cookie", "sid=" + sid)
                     .build();
 
-            HttpResponse<String> responseCheckHoliday = httpClient.send(requestCheckHoliday, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> responseCheckHoliday = httpClient.send(requestCheckHoliday,
+                    HttpResponse.BodyHandlers.ofString());
             if (responseCheckHoliday.statusCode() != 200) {
                 return new Result(false, "Échec vérification Holiday List : " + responseCheckHoliday.statusCode());
             }
 
             // Vérification si la Company existe déjà
-            String filtersCompany = URLEncoder.encode("[[\"name\",\"=\",\"" + companyName + "\"]]", StandardCharsets.UTF_8);
+            String filtersCompany = URLEncoder.encode("[[\"name\",\"=\",\"" + companyName + "\"]]",
+                    StandardCharsets.UTF_8);
             String urlGet = baseUrl + "Company?filters=" + filtersCompany;
 
             HttpRequest requestGet = HttpRequest.newBuilder()
@@ -404,25 +435,29 @@ public class Import extends HttpServlet {
             HttpRequest requestPost = HttpRequest.newBuilder()
                     .uri(URI.create(postUrl))
                     .header("Content-Type", "application/json")
-                    .header("Cookie", "sid=" + sid)  // ✅ Authentification correcte ici
+                    .header("Cookie", "sid=" + sid) // ✅ Authentification correcte ici
                     .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(companyData)))
                     .build();
 
             HttpResponse<String> responsePost = httpClient.send(requestPost, HttpResponse.BodyHandlers.ofString());
 
             if (responsePost.statusCode() != 200) {
-                return new Result(false, "POST Company failed: " + responsePost.statusCode() + " - " + responsePost.body());
+                return new Result(false,
+                        "POST Company failed: " + responsePost.statusCode() + " - " + responsePost.body());
             }
 
             return new Result(true, null);
 
         } catch (Exception e) {
+            Boolean resetdata = resetdata(getSid());
             return new Result(false, "Erreur création company: " + companyName + " - Détail: " + e.getMessage());
         }
     }
+
     private Result creerSalaryComponentSiNonExistant(String name, String type, String abbr, String sid) {
         try {
-            String baseUrl = "http://erpnext.localhost:8000/api/resource/";
+
+            String baseUrl = "http://172.25.36.0:8000/api/resource/";
             String doctypePath = "Salary%20Component"; // ✅ encodage manuel du chemin avec %20
             String filters = URLEncoder.encode("[[\"name\",\"=\",\"" + name + "\"]]", StandardCharsets.UTF_8);
             String getUrl = baseUrl + doctypePath + "?filters=" + filters;
@@ -461,7 +496,7 @@ public class Import extends HttpServlet {
 
             String postUrl = baseUrl + doctypePath;
             URI postUri = URI.create(postUrl); // ✅ URI avec %20
-
+            System.out.println("salary componement cree : =====" + name);
             HttpRequest requestPost = HttpRequest.newBuilder()
                     .uri(postUri)
                     .header("Content-Type", "application/json")
@@ -478,11 +513,10 @@ public class Import extends HttpServlet {
             return new Result(true, null);
 
         } catch (Exception e) {
+            // Boolean resetdata = resetdata(getSid());
             return new Result(false, "Erreur création Salary Component: " + e.getMessage());
         }
     }
-
-
 
     private Result creerEmploye(EmployeDto e, String sid) {
         try {
@@ -540,22 +574,86 @@ public class Import extends HttpServlet {
             }
 
         } catch (Exception ex) {
+            Boolean resetdata = resetdata(getSid());
             return new Result(false, "Exception création employé: " + ex.getMessage());
         }
     }
 
+    /**
+     * Crée une structure de salaire groupée avec ses composants
+     * 
+     * @param salaryStructure Le nom de la structure de salaire
+     * @param lignes          La liste des composants de la structure
+     * @param sid             L'identifiant de session
+     * @return Un objet Result indiquant le succès ou l'échec de l'opération
+     */
     private Result creerStructureRegroupee(String salaryStructure, List<StructureDto> lignes, String sid) {
         try {
+            // Vérifier d'abord si la structure existe déjà
+            String checkUrl = apiBaseUrl + "Salary%20Structure/"
+                    + URLEncoder.encode(salaryStructure, StandardCharsets.UTF_8.toString());
+
+            // Vérifier si la structure existe déjà et la supprimer si c'est le cas
+            // pour éviter les doublons
+            HttpRequest checkRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(checkUrl))
+                    .header("Cookie", "sid=" + sid)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> checkResponse = httpClient.send(checkRequest, HttpResponse.BodyHandlers.ofString());
+            if (checkResponse.statusCode() == 200) {
+                // La structure existe déjà, on la supprime d'abord
+                HttpRequest deleteRequest = HttpRequest.newBuilder()
+                        .uri(URI.create(checkUrl))
+                        .header("Cookie", "sid=" + sid)
+                        .DELETE()
+                        .build();
+                httpClient.send(deleteRequest, HttpResponse.BodyHandlers.ofString());
+            }
+
             JsonArray earnings = new JsonArray();
             JsonArray deductions = new JsonArray();
-            String company = lignes.isEmpty() ? null : lignes.get(0).getCompany();
+            List<String> erreurs = new ArrayList<>();
+            Map<String, StructureDto> composantsUniques = new LinkedHashMap<>();
+            String company = null;
 
+            // 1. Nettoyage et validation des données d'entrée
             for (StructureDto s : lignes) {
+                if (s == null || s.getName() == null || s.getName().trim().isEmpty()) {
+                    continue;
+                }
+                company = s.getCompany(); // On prend la dernière company non nulle
+
+                // Créer une clé unique avec le nom et le type pour éviter les doublons
+                String cleComposant = (s.getName().trim() + "|" + s.getType()).toLowerCase();
+
+                // Vérification des doublons avec même nom/type mais propriétés différentes
+                if (composantsUniques.containsKey(cleComposant)) {
+                    StructureDto existant = composantsUniques.get(cleComposant);
+                    if (!existant.getAbbr().equalsIgnoreCase(s.getAbbr())) {
+                        erreurs.add(
+                                String.format("Conflit de définition pour le composant '%s' (abréviation différente)",
+                                        s.getName()));
+                    }
+                } else {
+                    composantsUniques.put(cleComposant, s);
+                }
+            }
+
+            // 2. Création des composants uniques
+            // On utilise directement composantsUniques qui contient déjà les composants
+            // uniques
+            for (StructureDto s : composantsUniques.values()) {
+                // Créer le composant s'il n'existe pas
                 Result compResult = creerSalaryComponentSiNonExistant(s.getName(), s.getType(), s.getAbbr(), sid);
                 if (!compResult.success) {
-                    return compResult;
+                    erreurs.add(
+                            String.format("Erreur avec le composant '%s': %s", s.getName(), compResult.errorMessage));
+                    continue;
                 }
 
+                // Créer la ligne pour le composant
                 JsonObject line = new JsonObject();
                 line.addProperty("salary_component", s.getName());
                 line.addProperty("abbr", s.getAbbr());
@@ -564,59 +662,79 @@ public class Import extends HttpServlet {
                 line.addProperty("amount_based_on_formula", 1);
                 line.addProperty("depends_on_payment_days", 0);
 
-                if (s.getType().toLowerCase().equals("earning")) {
+                // Ajouter au tableau approprié
+                if (s.getType().equalsIgnoreCase("earning")) {
                     earnings.add(line);
-                } else if (s.getType().toLowerCase().equals("deduction")) {
+                } else if (s.getType().equalsIgnoreCase("deduction")) {
                     deductions.add(line);
+                } else {
+                    erreurs.add(String.format("Type de composant invalide pour '%s': %s", s.getName(), s.getType()));
                 }
             }
 
+            // 3. Si erreurs, on arrête tout
+            if (!erreurs.isEmpty()) {
+                return new Result(false, "Erreurs de validation des composants :\n" + String.join("\n", erreurs));
+            }
+
+            // Validation des tableaux vides
+            if (earnings.size() == 0 && deductions.size() == 0) {
+                return new Result(false, "Aucun composant valide trouvé pour la structure de salaire");
+            }
+
+            // 4. Création de la structure de salaire
             JsonObject payload = new JsonObject();
             payload.addProperty("doctype", "Salary Structure");
             payload.addProperty("name", salaryStructure);
             payload.addProperty("is_active", "Yes");
             payload.add("earnings", earnings);
             payload.add("deductions", deductions);
-            payload.addProperty("company", company);
+            if (company != null && !company.trim().isEmpty()) {
+                payload.addProperty("company", company.trim());
+            }
 
-            // URL corrigée avec %20 pour espace
+            // 5. Envoi de la requête de création
             HttpRequest requestPost = HttpRequest.newBuilder()
                     .uri(URI.create(apiBaseUrl + "Salary%20Structure"))
                     .header("Content-Type", "application/json")
                     .header("Cookie", "sid=" + sid)
+                    .header("Accept", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(payload)))
                     .build();
 
             HttpResponse<String> responsePost = httpClient.send(requestPost, HttpResponse.BodyHandlers.ofString());
 
             if (responsePost.statusCode() != 200) {
-                return new Result(false, "POST Salary Structure failed: " + responsePost.body());
+                return new Result(false, "Échec de la création de la structure de salaire: " +
+                        (responsePost.body() != null ? responsePost.body() : "Réponse vide"));
             }
 
+            // 6. Soumission de la structure
+            String encodedName = URLEncoder.encode(salaryStructure, StandardCharsets.UTF_8.toString());
             JsonObject submitPayload = new JsonObject();
             submitPayload.addProperty("docstatus", 1);
 
-            // URL corrigée avec %20 pour espace + ajout du sid dans le header
             HttpRequest requestSubmit = HttpRequest.newBuilder()
-                    .uri(URI.create(apiBaseUrl + "Salary%20Structure/" + salaryStructure))
+                    .uri(URI.create(apiBaseUrl + "Salary%20Structure/" + encodedName))
                     .header("Content-Type", "application/json")
                     .header("Cookie", "sid=" + sid)
+                    .header("Accept", "application/json")
                     .PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(submitPayload)))
                     .build();
 
             HttpResponse<String> responseSubmit = httpClient.send(requestSubmit, HttpResponse.BodyHandlers.ofString());
 
             if (responseSubmit.statusCode() != 200) {
-                return new Result(false, "Submit Salary Structure failed: " + responseSubmit.body());
+                return new Result(false, "Échec de la soumission de la structure de salaire: " +
+                        (responseSubmit.body() != null ? responseSubmit.body() : "Réponse vide"));
             }
 
             return new Result(true, null);
 
         } catch (Exception e) {
-            return new Result(false, "Exception: " + e.getMessage());
+            return new Result(false, "Erreur lors de la création de la structure de salaire: " + e.getMessage());
         }
     }
-
 
     private Result assignerStructureSalaire(PaieDto paie, String sid) {
         try {
@@ -624,8 +742,8 @@ public class Import extends HttpServlet {
             cal.setTime(paie.getMois());
             cal.set(Calendar.DAY_OF_MONTH, 1);
             Date moisDebut = cal.getTime();
-            System.out.println("reference emplyer ----------------------------------------->"+paie.getRefEmploye());
-            String employeeName = getEmployeeNameByEmployeeNumber(paie.getRefEmploye(), sid); // Ajout du paramètre sid
+            System.out.println("reference emplyer ----------------------------------------->" + paie.getRefEmploye());
+            String employeeName = getEmployeeNameByEmployeeNumber(paie.getRefEmploye(), sid);
 
             JsonObject data = new JsonObject();
             data.addProperty("doctype", "Salary Structure Assignment");
@@ -639,17 +757,18 @@ public class Import extends HttpServlet {
                     .uri(URI.create(apiBaseUrl + "Salary%20Structure%20Assignment"))
                     .header("Content-Type", "application/json")
                     .header("Cookie", "sid=" + sid)
+                    .header("Accept", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(data)))
                     .build();
 
             HttpResponse<String> responsePost = httpClient.send(requestPost, HttpResponse.BodyHandlers.ofString());
 
             if (responsePost.statusCode() != 200) {
-                return new Result(false, "POST Salary Structure Assignment failed: " + responsePost.body());
+                return new Result(false, "Échec de la création de l'assignation de structure de salaire: " +
+                        (responsePost.body() != null ? responsePost.body() : "Réponse vide"));
             }
 
-            JsonParser parser = new JsonParser();
-            JsonElement jsonElement = parser.parse(responsePost.body());
+            JsonElement jsonElement = JsonParser.parseString(responsePost.body());
             JsonObject jsonPost = jsonElement.getAsJsonObject();
             String name = jsonPost.getAsJsonObject("data").get("name").getAsString();
 
@@ -657,27 +776,28 @@ public class Import extends HttpServlet {
             submitPayload.addProperty("docstatus", 1);
 
             // URL encodée aussi ici + potentiellement encodage de 'name' si besoin
+            String encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
             HttpRequest requestSubmit = HttpRequest.newBuilder()
-                    .uri(URI.create(apiBaseUrl + "Salary%20Structure%20Assignment/" + name))
+                    .uri(URI.create(apiBaseUrl + "Salary%20Structure%20Assignment/" + encodedName))
                     .header("Content-Type", "application/json")
                     .header("Cookie", "sid=" + sid)
+                    .header("Accept", "application/json")
                     .PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(submitPayload)))
                     .build();
 
             HttpResponse<String> responseSubmit = httpClient.send(requestSubmit, HttpResponse.BodyHandlers.ofString());
 
             if (responseSubmit.statusCode() != 200) {
-                return new Result(false, "Submit Salary Structure Assignment failed: " + responseSubmit.body());
+                return new Result(false, "Échec de la soumission de l'assignation de structure de salaire: " +
+                        (responseSubmit.body() != null ? responseSubmit.body() : "Réponse vide"));
             }
 
             return new Result(true, null);
 
-        } catch (Exception ex) {
-            return new Result(false, "Exception: " + ex.getMessage());
+        } catch (Exception e) {
+            return new Result(false, "Erreur lors de l'assignation de la structure de salaire: " + e.getMessage());
         }
     }
-
-
 
     private Result creerPaie(PaieDto paie, String sid) {
         try {
@@ -748,6 +868,7 @@ public class Import extends HttpServlet {
             return new Result(true, null);
 
         } catch (Exception ex) {
+            Boolean resetdata = resetdata(getSid());
             return new Result(false, "Exception: " + ex.getMessage());
         }
     }
@@ -783,6 +904,7 @@ public class Import extends HttpServlet {
 
         throw new Exception("Aucun employé trouvé avec le numéro : " + employeeNumber);
     }
+
     private String getEmployeeFullNameByEmployeeNumber(String employeeNumber, String sid) throws Exception {
         String filter = "[[\"employee_number\",\"=\",\"" + employeeNumber + "\"]]";
         String encodedFilter = URLEncoder.encode(filter, StandardCharsets.UTF_8.toString());
@@ -815,9 +937,51 @@ public class Import extends HttpServlet {
 
         throw new Exception("Aucun employé trouvé avec le numéro : " + employeeNumber);
     }
-    public static boolean resetdata(String sid){
 
-        return true;
+    /**
+     * Réinitialise les données en appelant l'API de réinitialisation
+     * 
+     * @param sid L'identifiant de session
+     * @return true si la réinitialisation a réussi, false sinon
+     */
+    public static boolean resetdata(String sid) {
+        try {
+            // Désactiver la réinitialisation des composants par défaut
+            String apiUrl = "http://172.25.36.0:8000/api/method/hrms.api.reset_data.reset_data";
+
+            // Création du corps de la requête
+            JsonObject requestBody = new JsonObject();
+            requestBody.addProperty("preserve_defaults", true);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(apiUrl))
+                    .header("Cookie", "sid=" + sid)
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(new Gson().toJson(requestBody)))
+                    .build();
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            // Vérification du statut de réponse
+            if (response.statusCode() == 200) {
+                JsonElement jsonResponse = new Gson().fromJson(response.body(), JsonElement.class);
+                if (jsonResponse != null && jsonResponse.isJsonObject()) {
+                    JsonObject jsonObj = jsonResponse.getAsJsonObject();
+                    if (jsonObj.has("message")) {
+                        JsonElement message = jsonObj.get("message");
+                        if (message.isJsonPrimitive()) {
+                            return message.getAsString().toLowerCase().contains("success");
+                        }
+                    }
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     // Classes DTO
@@ -830,28 +994,64 @@ public class Import extends HttpServlet {
         private Date dateNaissance;
         private String company;
 
-        public EmployeDto() {}
+        public EmployeDto() {
+        }
 
-        public String getRef() { return ref; }
-        public void setRef(String ref) { this.ref = ref; }
+        public String getRef() {
+            return ref;
+        }
 
-        public String getNom() { return nom; }
-        public void setNom(String nom) { this.nom = nom; }
+        public void setRef(String ref) {
+            this.ref = ref;
+        }
 
-        public String getPrenom() { return prenom; }
-        public void setPrenom(String prenom) { this.prenom = prenom; }
+        public String getNom() {
+            return nom;
+        }
 
-        public String getGenre() { return genre; }
-        public void setGenre(String genre) { this.genre = genre; }
+        public void setNom(String nom) {
+            this.nom = nom;
+        }
 
-        public Date getDateEmbauche() { return dateEmbauche; }
-        public void setDateEmbauche(Date dateEmbauche) { this.dateEmbauche = dateEmbauche; }
+        public String getPrenom() {
+            return prenom;
+        }
 
-        public Date getDateNaissance() { return dateNaissance; }
-        public void setDateNaissance(Date dateNaissance) { this.dateNaissance = dateNaissance; }
+        public void setPrenom(String prenom) {
+            this.prenom = prenom;
+        }
 
-        public String getCompany() { return company; }
-        public void setCompany(String company) { this.company = company; }
+        public String getGenre() {
+            return genre;
+        }
+
+        public void setGenre(String genre) {
+            this.genre = genre;
+        }
+
+        public Date getDateEmbauche() {
+            return dateEmbauche;
+        }
+
+        public void setDateEmbauche(Date dateEmbauche) {
+            this.dateEmbauche = dateEmbauche;
+        }
+
+        public Date getDateNaissance() {
+            return dateNaissance;
+        }
+
+        public void setDateNaissance(Date dateNaissance) {
+            this.dateNaissance = dateNaissance;
+        }
+
+        public String getCompany() {
+            return company;
+        }
+
+        public void setCompany(String company) {
+            this.company = company;
+        }
     }
 
     public static class StructureDto {
@@ -862,25 +1062,56 @@ public class Import extends HttpServlet {
         private String valeur;
         private String company;
 
-        public StructureDto() {}
+        public StructureDto() {
+        }
 
-        public String getSalaryStructure() { return salaryStructure; }
-        public void setSalaryStructure(String salaryStructure) { this.salaryStructure = salaryStructure; }
+        public String getSalaryStructure() {
+            return salaryStructure;
+        }
 
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public void setSalaryStructure(String salaryStructure) {
+            this.salaryStructure = salaryStructure;
+        }
 
-        public String getAbbr() { return abbr; }
-        public void setAbbr(String abbr) { this.abbr = abbr; }
+        public String getName() {
+            return name;
+        }
 
-        public String getType() { return type; }
-        public void setType(String type) { this.type = type; }
+        public void setName(String name) {
+            this.name = name;
+        }
 
-        public String getValeur() { return valeur; }
-        public void setValeur(String valeur) { this.valeur = valeur; }
+        public String getAbbr() {
+            return abbr;
+        }
 
-        public String getCompany() { return company; }
-        public void setCompany(String company) { this.company = company; }
+        public void setAbbr(String abbr) {
+            this.abbr = abbr;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getValeur() {
+            return valeur;
+        }
+
+        public void setValeur(String valeur) {
+            this.valeur = valeur;
+        }
+
+        public String getCompany() {
+            return company;
+        }
+
+        public void setCompany(String company) {
+            this.company = company;
+        }
     }
 
     public static class PaieDto {
@@ -889,19 +1120,40 @@ public class Import extends HttpServlet {
         private int salaireBase;
         private String salaire;
 
-        public PaieDto() {}
+        public PaieDto() {
+        }
 
-        public Date getMois() { return mois; }
-        public void setMois(Date mois) { this.mois = mois; }
+        public Date getMois() {
+            return mois;
+        }
 
-        public String getRefEmploye() { return refEmploye; }
-        public void setRefEmploye(String refEmploye) { this.refEmploye = refEmploye; }
+        public void setMois(Date mois) {
+            this.mois = mois;
+        }
 
-        public int getSalaireBase() { return salaireBase; }
-        public void setSalaireBase(int salaireBase) { this.salaireBase = salaireBase; }
+        public String getRefEmploye() {
+            return refEmploye;
+        }
 
-        public String getSalaire() { return salaire; }
-        public void setSalaire(String salaire) { this.salaire = salaire; }
+        public void setRefEmploye(String refEmploye) {
+            this.refEmploye = refEmploye;
+        }
+
+        public int getSalaireBase() {
+            return salaireBase;
+        }
+
+        public void setSalaireBase(int salaireBase) {
+            this.salaireBase = salaireBase;
+        }
+
+        public String getSalaire() {
+            return salaire;
+        }
+
+        public void setSalaire(String salaire) {
+            this.salaire = salaire;
+        }
     }
 
     // Classes de résultats
@@ -928,5 +1180,22 @@ public class Import extends HttpServlet {
 
     }
 
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        HttpSession session = request.getSession();
+        String sid = (String) session.getAttribute("sid");
+
+        try {
+            boolean result = resetdata(sid);
+
+            if (result) {
+                response.sendRedirect("dashboard.jsp");
+            }
+        } catch (Exception e) {
+            session.setAttribute("errorMsg", "Erreur : " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
 }

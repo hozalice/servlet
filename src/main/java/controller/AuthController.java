@@ -65,6 +65,7 @@ public class AuthController extends HttpServlet {
                         String cookie = conn.getHeaderField(i);
                         if (cookie.startsWith("sid=")) {
                             sid = cookie.substring(4, cookie.indexOf(";"));
+                            System.out.println(sid);
                             break;
                         }
                     }
