@@ -812,7 +812,7 @@ public class Import extends HttpServlet {
 
             // Récupération correcte du nom de l'employé
             String employeeName = getEmployeeNameByEmployeeNumber(paie.getRefEmploye(), sid);
-
+            System.out.println("empoyer id : " + employeeName);
             // Vérification si le Salary Slip existe déjà
             String filter = "[[\"employee\",\"=\",\"" + employeeName + "\"]," +
                     "[\"start_date\",\">=\",\"" + new SimpleDateFormat("yyyy-MM-dd").format(moisDebut) + "\"]," +

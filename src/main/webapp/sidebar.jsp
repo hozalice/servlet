@@ -17,7 +17,7 @@
       </li>
       <li class="nav-item">
       <li class="nav-item">
-          <a href="#" class="nav-link">Congés</a>
+          <a href="/salaries" class="nav-link">Salaire Employee</a>
       </li>
       <li class="nav-item">
           <a href="#" class="nav-link">Formation</a>

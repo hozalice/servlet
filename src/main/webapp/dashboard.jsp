@@ -198,16 +198,6 @@
 <%@ include file="sidebar.jsp" %>
 
 <main class="main-content">
-    <div class="header">
-        <h2>Tableau de bord</h2>
-        <form action="Import" method="post" style="margin: 0;">
-            <input type="hidden" name="action" value="resetdata">
-            <button type="submit" class="reset-btn" onclick="return confirm('Êtes-vous sûr de vouloir réinitialiser toutes les données ? Cette action est irréversible.');">
-                <i class="fas fa-trash-alt"></i>
-                Réinitialiser les données
-            </button>
-        </form>
-    </div>
     <div class="dashboard-header">
         <p>Bienvenue dans votre espace de gestion RH</p>
     </div>
@@ -230,7 +220,7 @@
                     <div class="card-body">
                         <form action="import" method="get">
                             <input type="hidden" name="action" value="resetdata">
-                            <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir réinitialiser toutes les données ? Cette action est irréversible.');">
+                            <button type="submit" class="reset-btn" onclick="return confirm('Êtes-vous sûr de vouloir réinitialiser toutes les données ? Cette action est irréversible.');">
                                 <i class="fas fa-trash-alt mr-1"></i> Réinitialiser les données
                             </button>
                         </form>
