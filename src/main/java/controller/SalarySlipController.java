@@ -1,100 +1,87 @@
 package controller;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonReader;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.time.YearMonth;
 
-    @WebServlet("/Salary-Slip")
-    public class SalarySlipController extends HttpServlet {
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
-        private static final String API_BASE_URL = "http://172.25.36.0:8000/api/resource/Salary%20Slip";
-        private static final String API_FICHE_EMP = "http://172.25.36.0:8000/api/resource/Employee";
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
-        @Override
-        protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-            resp.setContentType("text/html;charset=UTF-8");
-            PrintWriter out = resp.getWriter();
+@WebServlet("/Salary-Slip")
+public class SalarySlipController extends HttpServlet {
+    private static final String API_BASE_URL = "http://172.25.36.0:8000/api/resource/";
 
-            try {
-                String sid = (String) req.getSession().getAttribute("sid");
-                if (sid == null) {
-                    resp.sendRedirect("index.jsp");
-                    return;
-                }
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("text/html;charset=UTF-8");
+        HttpSession session = request.getSession();
+        String sid = (String) session.getAttribute("sid");
 
-                String employer = req.getParameter("employer");
-                String mois = req.getParameter("mois");
-                String annee = req.getParameter("annee");
-
-                String fieldsParam = "[\"name\",\"employee\",\"employee_name\",\"posting_date\",\"start_date\",\"end_date\",\"status\",\"net_pay\",\"gross_pay\"]";
-                String filtre;
-                if ((mois == null || mois.isEmpty()) || (annee == null || annee.isEmpty())) {
-                    filtre = "[[\"employee\",\"=\",\"" + employer + "\"]]";
-                } else {
-                    int month = Integer.parseInt(mois);
-                    int year = Integer.parseInt(annee);
-                    LocalDate start = LocalDate.of(year, month, 1);
-                    LocalDate end = YearMonth.of(year, month).atEndOfMonth();
-
-                    filtre = "[" +
-                            "[\"employee\",\"=\",\"" + employer + "\"]," +
-                            "[\"start_date\",\">=\",\"" + start + "\"]," +
-                            "[\"start_date\",\"<=\",\"" + end + "\"]" +
-                            "]";
-                }
-
-                String encodedFields = URLEncoder.encode(fieldsParam, StandardCharsets.UTF_8);
-                String encodedFilters = URLEncoder.encode(filtre, StandardCharsets.UTF_8);
-
-                // API pour Salary Slip
-                String apiUrl = API_BASE_URL + "?fields=" + encodedFields + "&filters=" + encodedFilters;
-
-                // API pour récupérer les infos de l'employé
-                String apiemployer = API_FICHE_EMP + "/" + employer;
-
-                // Connexion pour Salary Slip
-                JsonObject fiche_employers = getJsonFromApi(apiUrl, sid);
-                // Connexion pour Employer
-                JsonObject employerData = getJsonFromApi(apiemployer, sid);
-
-                // Extraire la biographie
-                String biographie = "";
-                if (employerData != null && employerData.has("data")) {
-                    JsonObject dataObject = employerData.getAsJsonObject("data");
-                    if (dataObject.has("biography") && !dataObject.get("biography").isJsonNull()) {
-                        biographie = dataObject.get("biography").getAsString();
-                    }
-                }
-
-                req.setAttribute("biographie", biographie);
-                req.setAttribute("fiche_employerData", fiche_employers.toString());
-                req.getRequestDispatcher("fiche_employer.jsp").forward(req, resp);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                out.write("Erreur serveur : " + e.getMessage());
-            }
+        if (sid == null) {
+            response.sendRedirect("index.jsp");
+            return;
         }
 
-    // Méthode utilitaire pour appeler une API et retourner un JsonObject
-    private JsonObject getJsonFromApi(String urlString, String sid) throws IOException {
+        try {
+            String employeeId = request.getParameter("employer");
+            if (employeeId == null || employeeId.trim().isEmpty()) {
+                throw new Exception("L'identifiant de l'employé est requis");
+            }
+
+            // Récupérer les informations de l'employé
+            String employeeUrl = API_BASE_URL + "Employee/" + URLEncoder.encode(employeeId, StandardCharsets.UTF_8);
+            JsonObject employeeData = callApi(employeeUrl, sid);
+
+            if (employeeData == null || !employeeData.has("data")) {
+                throw new Exception("Employé non trouvé");
+            }
+
+            JsonObject employee = employeeData.getAsJsonObject("data");
+
+            // Récupérer les fiches de paie de l'employé
+            String salarySlipsUrl = API_BASE_URL + "Salary%20Slip?fields=" +
+                    URLEncoder.encode("[\"name\",\"start_date\",\"end_date\",\"net_pay\",\"gross_pay\",\"status\"]",
+                            StandardCharsets.UTF_8)
+                    +
+                    "&filters="
+                    + URLEncoder.encode("[[\"employee\",\"=\",\"" + employeeId + "\"]]", StandardCharsets.UTF_8);
+
+            JsonObject salarySlipsData = callApi(salarySlipsUrl, sid);
+            // Préparer les données pour la JSP
+            request.setAttribute("employee", employee.toString());
+            
+            // Vérifier si les données de salaire sont valides
+            if (salarySlipsData != null && salarySlipsData.has("data")) {
+                JsonArray slips = salarySlipsData.getAsJsonArray("data");
+                request.setAttribute("salarySlips", slips.toString());
+            } else {
+                request.setAttribute("salarySlips", "[]");
+            }
+            
+            // Transférer à la JSP
+            request.getRequestDispatcher("/fiche_employer.jsp").forward(request, response);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("error", "Erreur: " + e.getMessage());
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
+        }
+    }
+
+    private JsonObject callApi(String urlString, String sid) throws IOException {
         URL url = new URL(urlString);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
@@ -106,8 +93,9 @@ import java.time.YearMonth;
         StringBuilder response = new StringBuilder();
 
         try (BufferedReader br = new BufferedReader(
-                new InputStreamReader(responseCode >= 200 && responseCode < 300 ?
-                        conn.getInputStream() : conn.getErrorStream(), StandardCharsets.UTF_8))) {
+                new InputStreamReader(
+                        responseCode >= 200 && responseCode < 300 ? conn.getInputStream() : conn.getErrorStream(),
+                        StandardCharsets.UTF_8))) {
             String line;
             while ((line = br.readLine()) != null) {
                 response.append(line);
@@ -115,12 +103,9 @@ import java.time.YearMonth;
         }
 
         if (responseCode >= 200 && responseCode < 300) {
-            JsonReader reader = new JsonReader(new java.io.StringReader(response.toString()));
-            reader.setLenient(true);
-            JsonParser parser = new JsonParser();
-            JsonElement jsonElement = parser.parse(reader);
-            return jsonElement.getAsJsonObject();
+            return new Gson().fromJson(response.toString(), JsonObject.class);
         } else {
+            System.err.println("Erreur API " + responseCode + ": " + response.toString());
             return null;
         }
     }

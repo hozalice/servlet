@@ -23,7 +23,7 @@
         }
 
         .container {
-            max-width: 95%;
+            width: 60%;
             margin: 0 auto;
             padding: 1.5rem;
             background: white;

@@ -63,13 +63,6 @@ public class Import extends HttpServlet {
             setSid(sid);
         }
 
-        // Gestion de la réinitialisation des données
-        if ("resetdata".equals(request.getParameter("action"))) {
-            boolean success = resetdata(sid);
-            response.sendRedirect("dashboard.jsp?reset=" + (success ? "success" : "error"));
-            return;
-        }
-
         // Configuration de la réponse pour les autres actions
         try (PrintWriter out = response.getWriter()) {
             if (sid == null || sid.isEmpty()) {
@@ -104,6 +97,8 @@ public class Import extends HttpServlet {
                 result.addProperty("message", "Import réalisé avec succès");
             } else {
                 result.addProperty("success", false);
+                resetdata(sid);
+                System.out.println("misy blem azafady fa tsy tafiditra");
                 result.add("errors", gson.toJsonTree(errors));
             }
 
@@ -159,6 +154,8 @@ public class Import extends HttpServlet {
         for (String company : companies) {
             Result result = creerCompanySiNonExistante(company, sid);
             if (!result.success) {
+                resetdata(sid);
+                System.out.println("donne effacer avec avec succes ");
                 erreurs.add("Erreur création company: " + company + " - Détail: " + result.errorMessage);
             }
         }
@@ -169,6 +166,8 @@ public class Import extends HttpServlet {
         for (EmployeDto emp : employes) {
             GenderResult genderResult = traduireGenre(emp.getGenre());
             if (!genderResult.success) {
+                resetdata(sid);
+                System.out.println("donne effacer avec avec succes ");
                 erreurs.add("Erreur traduction genre pour " + emp.getRef() +
                         " - Genre fourni : '" + emp.getGenre() + "' - " + genderResult.errorMessage);
             } else {
@@ -194,16 +193,21 @@ public class Import extends HttpServlet {
         for (Map.Entry<String, List<StructureDto>> entry : groupes.entrySet()) {
             Result result = creerStructureRegroupee(entry.getKey(), entry.getValue(), sid);
             if (!result.success) {
+                resetdata(sid);
+                System.out.println("donne effacer avec avec succes ");
                 erreurs.add("Erreur création de " + entry.getKey() + " : " + result.errorMessage);
             }
         }
         if (!erreurs.isEmpty())
+
             return erreurs;
 
         // 7. Assigner les structures salariales
         for (PaieDto p : paies) {
             Result result = assignerStructureSalaire(p, sid);
             if (!result.success) {
+                resetdata(sid);
+                System.out.println("donne effacer avec avec succes ");
                 erreurs.add("Erreur assignation structure pour : " + p.getRefEmploye() +
                         " mois " + dateFormat.format(p.getMois()) + " - Détail: " + result.errorMessage);
             }
@@ -215,6 +219,8 @@ public class Import extends HttpServlet {
         for (PaieDto p : paies) {
             Result result = creerPaie(p, sid);
             if (!result.success) {
+                resetdata(sid);
+                System.out.println("donne effacer avec avec succes ");
                 erreurs.add("Erreur création paie pour : " + p.getRefEmploye() +
                         " mois " + dateFormat.format(p.getMois()) + " - Détail: " + result.errorMessage);
             }
@@ -449,7 +455,7 @@ public class Import extends HttpServlet {
             return new Result(true, null);
 
         } catch (Exception e) {
-            Boolean resetdata = resetdata(getSid());
+            resetdata(getSid());
             return new Result(false, "Erreur création company: " + companyName + " - Détail: " + e.getMessage());
         }
     }
@@ -692,7 +698,7 @@ public class Import extends HttpServlet {
             if (company != null && !company.trim().isEmpty()) {
                 payload.addProperty("company", company.trim());
             }
-
+            System.out.println("JSON envoyé: " + gson.toJson(payload));
             // 5. Envoi de la requête de création
             HttpRequest requestPost = HttpRequest.newBuilder()
                     .uri(URI.create(apiBaseUrl + "Salary%20Structure"))
@@ -732,6 +738,8 @@ public class Import extends HttpServlet {
             return new Result(true, null);
 
         } catch (Exception e) {
+            resetdata(sid);
+            System.out.println("donne effacer avec avec succes ");
             return new Result(false, "Erreur lors de la création de la structure de salaire: " + e.getMessage());
         }
     }
@@ -795,6 +803,8 @@ public class Import extends HttpServlet {
             return new Result(true, null);
 
         } catch (Exception e) {
+            resetdata(sid);
+            System.out.println("donne effacer avec avec succes ");
             return new Result(false, "Erreur lors de l'assignation de la structure de salaire: " + e.getMessage());
         }
     }
@@ -851,7 +861,7 @@ public class Import extends HttpServlet {
             data.addProperty("end_date", new SimpleDateFormat("yyyy-MM-dd").format(moisFin));
             data.addProperty("posting_date", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
             data.addProperty("docstatus", 1); // DIRECTEMENT SOUMIS
-
+            System.out.println("JSON envoyé: " + gson.toJson(data));
             HttpRequest requestPost = HttpRequest.newBuilder()
                     .uri(URI.create(apiBaseUrl + "Salary%20Slip"))
                     .header("Content-Type", "application/json")
@@ -863,12 +873,16 @@ public class Import extends HttpServlet {
 
             if (responsePost.statusCode() != 200) {
                 return new Result(false, "POST Salary Slip failed: " + responsePost.body());
+            }else {
+                System.out.println("Status code: " + responsePost.statusCode());
+                System.out.println("Response body: " + responsePost.body());
             }
 
             return new Result(true, null);
 
         } catch (Exception ex) {
-            Boolean resetdata = resetdata(getSid());
+            resetdata(sid);
+            System.out.println("donne effacer avec avec succes ");
             return new Result(false, "Exception: " + ex.getMessage());
         }
     }
@@ -979,6 +993,8 @@ public class Import extends HttpServlet {
             }
             return false;
         } catch (Exception e) {
+            resetdata(sid);
+            System.out.println("donne effacer avec avec succes ");
             e.printStackTrace();
             return false;
         }
@@ -1187,11 +1203,9 @@ public class Import extends HttpServlet {
         String sid = (String) session.getAttribute("sid");
 
         try {
-            boolean result = resetdata(sid);
-
-            if (result) {
-                response.sendRedirect("dashboard.jsp");
-            }
+            resetdata(sid);
+            System.out.println("donne effacer avec avec succes ");
+            response.sendRedirect("dashboard.jsp");
         } catch (Exception e) {
             session.setAttribute("errorMsg", "Erreur : " + e.getMessage());
             e.printStackTrace();
