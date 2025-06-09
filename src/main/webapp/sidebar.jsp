@@ -10,7 +10,7 @@
           <a href="/Employer-Controller" class="nav-link">Employés</a>
       </li>
       <li class="nav-item">
-          <a href="/Salary-Slip-Component" class="nav-link">Salary Slip Component</a>
+          <a href="/statistiques" class="nav-link">Total Salaires</a>
       </li>
       <li class="nav-item">
           <a href="/Salary-Slip" class="nav-link">Fiches de paie</a>

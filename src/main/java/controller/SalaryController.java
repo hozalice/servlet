@@ -7,6 +7,11 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.google.gson.*;
 
 import jakarta.servlet.ServletException;
@@ -32,85 +37,83 @@ public class SalaryController extends HttpServlet {
             return;
         }
 
+        // Récupérer les filtres mois et année depuis les paramètres GET
+        String monthParam = request.getParameter("month"); // ex: "3" pour mars
+        String yearParam = request.getParameter("year");   // ex: "2025"
+
         try {
             // Récupérer tous les employés
             String employeeUrl = API_BASE_URL + "Employee?fields=" +
                     URLEncoder.encode("[\"name\",\"employee_name\",\"employee_number\"]", StandardCharsets.UTF_8);
             JsonObject employeesData = callApi(employeeUrl, sid);
 
-            // Récupérer les données des employés
             JsonArray employees = employeesData.has("data") ? employeesData.getAsJsonArray("data") : new JsonArray();
             JsonArray allSalarySlips = new JsonArray();
 
-            // Pour chaque employé, récupérer les fiches de paie détaillées
+            // Pour chaque employé, récupérer les fiches de paie
             for (JsonElement emp : employees) {
                 JsonObject employee = emp.getAsJsonObject();
                 String empId = employee.get("name").getAsString();
 
-                // Récupérer les fiches de paie pour cet employé
+                // Construire URL des fiches de paie filtrées
                 String salarySlipsUrl = API_BASE_URL + "Salary%20Slip?fields=" +
                         URLEncoder.encode(
                                 "[\"name\",\"employee\",\"employee_name\",\"start_date\",\"end_date\",\"gross_pay\",\"net_pay\",\"status\"]",
                                 StandardCharsets.UTF_8)
-                        +
-                        "&filters=[[\"employee\",\"=\",\"" + empId + "\"]]";
+                        + "&filters=[[\"employee\",\"=\",\"" + empId + "\"]]";
 
                 JsonObject salarySlipsData = callApi(salarySlipsUrl, sid);
+
                 if (salarySlipsData != null && salarySlipsData.has("data")) {
                     JsonArray employeeSlips = salarySlipsData.getAsJsonArray("data");
 
-                    // Pour chaque fiche de paie, récupérer les détails complets
                     for (JsonElement slip : employeeSlips) {
                         JsonObject slipObj = slip.getAsJsonObject();
-                        String slipName = slipObj.has("name") ? slipObj.get("name").getAsString() : "";
 
-                        if (!slipName.isEmpty()) {
-                            try {
-                                // Récupérer les détails complets de la fiche de paie
-                                // Remplacer les espaces par %20 et les / par %2F
-                                String encodedSlipName = slipName
-                                        .replace(" ", "%20") // Remplacer les espaces d'abord
-                                        .replace("/", "%2F"); // Puis les slashes
-                                String slipDetailsUrl = API_BASE_URL + "Salary%20Slip/" + encodedSlipName;
+                        // Filtrer par mois et année si demandé
+                        if (passesDateFilter(slipObj, monthParam, yearParam)) {
+                            String slipName = slipObj.has("name") ? slipObj.get("name").getAsString() : "";
 
-                                JsonObject slipDetails = callApi(slipDetailsUrl, sid);
-                                if (slipDetails != null && slipDetails.has("data")) {
-                                    JsonObject slipData = slipDetails.getAsJsonObject("data");
-                                    // S'assurer que les tableaux existent
-                                    if (!slipData.has("earnings")) {
-                                        slipData.add("earnings", new JsonArray());
+                            if (!slipName.isEmpty()) {
+                                try {
+                                    String encodedSlipName = slipName
+                                            .replace(" ", "%20")
+                                            .replace("/", "%2F");
+                                    String slipDetailsUrl = API_BASE_URL + "Salary%20Slip/" + encodedSlipName;
+
+                                    JsonObject slipDetails = callApi(slipDetailsUrl, sid);
+                                    if (slipDetails != null && slipDetails.has("data")) {
+                                        JsonObject slipData = slipDetails.getAsJsonObject("data");
+                                        if (!slipData.has("earnings")) {
+                                            slipData.add("earnings", new JsonArray());
+                                        }
+                                        if (!slipData.has("deductions")) {
+                                            slipData.add("deductions", new JsonArray());
+                                        }
+                                        allSalarySlips.add(slipData);
+                                    } else {
+                                        allSalarySlips.add(slipObj);
                                     }
-                                    if (!slipData.has("deductions")) {
-                                        slipData.add("deductions", new JsonArray());
-                                    }
-                                    allSalarySlips.add(slipData);
-                                } else {
+                                } catch (Exception e) {
+                                    System.err.println("Erreur récupération détails fiche paie " + slipName + ": " + e.getMessage());
                                     allSalarySlips.add(slipObj);
                                 }
-                            } catch (Exception e) {
-                                // En cas d'erreur, ajouter les données de base
-                                System.err.println("Erreur lors de la récupération des détails pour " + slipName + ": "
-                                        + e.getMessage());
+                            } else {
                                 allSalarySlips.add(slipObj);
                             }
-                        } else {
-                            allSalarySlips.add(slipObj);
                         }
                     }
                 }
             }
 
-            // Grouper les fiches de paie par employé
-            JsonArray salarySlips = allSalarySlips;
-
-            // Grouper les fiches de paie par employé
+            // Grouper les fiches par employé
             JsonObject groupedSalaries = new JsonObject();
             for (JsonElement emp : employees) {
                 JsonObject employee = emp.getAsJsonObject();
                 String empId = employee.get("name").getAsString();
 
                 JsonArray empSalaries = new JsonArray();
-                for (JsonElement slip : salarySlips) {
+                for (JsonElement slip : allSalarySlips) {
                     JsonObject salary = slip.getAsJsonObject();
                     if (salary.has("employee") && salary.get("employee").getAsString().equals(empId)) {
                         empSalaries.add(salary);
@@ -122,12 +125,15 @@ public class SalaryController extends HttpServlet {
                 }
             }
 
-            // Ajouter les données à la requête
+            // Calculer les totaux
+            JsonObject totalsJson = calculateTotals(allSalarySlips);
+            System.out.println(totalsJson);
+            // Mettre les attributs pour la JSP
             request.setAttribute("employees", employees.toString());
             request.setAttribute("groupedSalaries", groupedSalaries.toString());
-            request.setAttribute("allSalarySlips", salarySlips.toString());
+            request.setAttribute("allSalarySlips", allSalarySlips.toString());
+            request.setAttribute("totalsJson", totalsJson.toString());
 
-            // Transférer à la JSP
             request.getRequestDispatcher("/salaries.jsp").forward(request, response);
 
         } catch (Exception e) {
@@ -135,6 +141,89 @@ public class SalaryController extends HttpServlet {
             request.setAttribute("error", "Erreur lors de la récupération des données: " + e.getMessage());
             request.getRequestDispatcher("/salaries.jsp").forward(request, response);
         }
+    }
+
+    /**
+     * Vérifie si une fiche de paie passe le filtre de mois et année (sur start_date).
+     */
+    private boolean passesDateFilter(JsonObject slip, String monthParam, String yearParam) {
+        if (!slip.has("start_date")) {
+            return false; // Sans date on exclut
+        }
+        String startDateStr = slip.get("start_date").getAsString();
+
+        try {
+            LocalDate startDate = LocalDate.parse(startDateStr, DateTimeFormatter.ISO_DATE);
+
+            if (yearParam != null && !yearParam.isEmpty()) {
+                int yearFilter = Integer.parseInt(yearParam);
+                if (startDate.getYear() != yearFilter) {
+                    return false;
+                }
+            }
+
+            if (monthParam != null && !monthParam.isEmpty()) {
+                int monthFilter = Integer.parseInt(monthParam);
+                if (startDate.getMonthValue() != monthFilter) {
+                    return false;
+                }
+            }
+            return true; // Passe tous les filtres
+        } catch (Exception e) {
+            // En cas de problème de parsing, exclure
+            return false;
+        }
+    }
+
+    /**
+     * Calcule les totaux des montants pour earnings et deductions.
+     */
+    private JsonObject calculateTotals(JsonArray salarySlips) {
+        Map<String, Double> earningsTotals = new HashMap<>();
+        Map<String, Double> deductionsTotals = new HashMap<>();
+
+        for (JsonElement slipElem : salarySlips) {
+            JsonObject slip = slipElem.getAsJsonObject();
+
+            if (slip.has("earnings") && slip.get("earnings").isJsonArray()) {
+                JsonArray earnings = slip.getAsJsonArray("earnings");
+                for (JsonElement earningElem : earnings) {
+                    JsonObject earning = earningElem.getAsJsonObject();
+                    String component = earning.has("salary_component") ? earning.get("salary_component").getAsString() : "unknown";
+                    double amount = earning.has("amount") ? earning.get("amount").getAsDouble() : 0.0;
+                    earningsTotals.put(component, earningsTotals.getOrDefault(component, 0.0) + amount);
+                }
+            }
+
+            if (slip.has("deductions") && slip.get("deductions").isJsonArray()) {
+                JsonArray deductions = slip.getAsJsonArray("deductions");
+                for (JsonElement deductionElem : deductions) {
+                    JsonObject deduction = deductionElem.getAsJsonObject();
+                    String component = deduction.has("salary_component") ? deduction.get("salary_component").getAsString() : "unknown";
+                    double amount = deduction.has("amount") ? deduction.get("amount").getAsDouble() : 0.0;
+                    deductionsTotals.put(component, deductionsTotals.getOrDefault(component, 0.0) + amount);
+
+                }
+            }
+        }
+
+        JsonObject result = new JsonObject();
+
+        JsonObject earningsJson = new JsonObject();
+        for (Map.Entry<String, Double> entry : earningsTotals.entrySet()) {
+            earningsJson.addProperty(entry.getKey(), entry.getValue());
+        }
+
+        JsonObject deductionsJson = new JsonObject();
+        for (Map.Entry<String, Double> entry : deductionsTotals.entrySet()) {
+            deductionsJson.addProperty(entry.getKey(), entry.getValue());
+        }
+        //System.out.println("GAIN =  " + earningsJson);
+        //System.out.println("DEDUCTION  = " + deductionsJson );
+        result.add("earningsTotals", earningsJson);
+        result.add("deductionsTotals", deductionsJson);
+
+        return result;
     }
 
     private JsonObject callApi(String urlString, String sid) throws IOException {
@@ -145,8 +234,8 @@ public class SalaryController extends HttpServlet {
             conn.setRequestProperty("Cookie", "sid=" + sid);
             conn.setRequestProperty("Accept", "application/json");
             conn.setRequestProperty("User-Agent", "Java-Client");
-            conn.setConnectTimeout(10000); // 10 secondes de timeout
-            conn.setReadTimeout(10000); // 10 secondes de timeout
+            conn.setConnectTimeout(10000); // 10 secondes
+            conn.setReadTimeout(10000); // 10 secondes
 
             int responseCode = conn.getResponseCode();
             StringBuilder response = new StringBuilder();
@@ -167,26 +256,20 @@ public class SalaryController extends HttpServlet {
                     jsonResponse = new Gson().fromJson(response.toString(), JsonObject.class);
                 } catch (JsonSyntaxException e) {
                     throw new IOException(
-                            "Erreur de parsing JSON: " + e.getMessage() + " - Réponse: " + response.toString());
+                            "Erreur parsing JSON: " + e.getMessage() + " - Response: " + response.toString());
                 }
             }
 
             if (responseCode >= 200 && responseCode < 300) {
                 if (jsonResponse == null) {
-                    throw new IOException("Réponse vide de l'API pour l'URL: " + urlString);
+                    throw new IOException("Empty response from API: " + urlString);
                 }
                 return jsonResponse;
             } else {
-                String errorMsg = "Erreur API: " + responseCode + " - " + urlString;
-                if (jsonResponse != null) {
-                    errorMsg += " - " + jsonResponse.toString();
-                } else {
-                    errorMsg += " - Réponse: " + response.toString();
-                }
-                throw new IOException(errorMsg);
+                throw new IOException("Erreur HTTP " + responseCode + ": " + response.toString());
             }
-        } catch (IOException e) {
-            throw new IOException("Erreur lors de l'appel à l'API: " + urlString + " - " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new IOException("Erreur appel API: " + e.getMessage(), e);
         }
     }
 }
