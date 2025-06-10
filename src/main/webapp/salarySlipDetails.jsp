@@ -78,13 +78,13 @@
             background: #e9ecef;
         }
         .btn-primary {
-            background: #0d6efd;
+            background: #4a5568;
             color: white;
-            border-color: #0d6efd;
+            border-color: #4a5568;
         }
         .btn-primary:hover {
-            background: #0b5ed7;
-            border-color: #0a58ca;
+            background: #4a5568;
+            border-color:#4a5568;
         }
         .btn-sm {
             padding: 3px 8px;
@@ -92,11 +92,11 @@
         }
         .btn-outline-primary {
             background: transparent;
-            color: #0d6efd;
-            border-color: #0d6efd;
+            color:#4a5568;
+            border-color: #4a5568;
         }
         .btn-outline-primary:hover {
-            background: #0d6efd;
+            background:#4a5568;
             color: white;
         }
         .alert {

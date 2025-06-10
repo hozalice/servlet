@@ -266,7 +266,7 @@
     <!-- Formulaire de recherche -->
     <div class="search-container">
         <form action="Employer-Controller" method="get" class="search-form">
-            <input type="text" name="search" class="search-input" placeholder="Rechercher un employé...">
+            <input type="text" name="employe_name" class="search-input" placeholder="Rechercher un employé...">
             <button type="submit" class="search-btn">Rechercher</button>
         </form>
     </div>

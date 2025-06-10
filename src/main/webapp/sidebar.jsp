@@ -4,16 +4,16 @@
   </div>
   <ul class="nav-menu">
       <li class="nav-item">
-          <a href="dashboard.jsp" class="nav-link active">Importation de données</a>
+          <a href="dashboard.jsp" class="nav-link active">Data</a>
       </li>
       <li class="nav-item">
-          <a href="/Employer-Controller" class="nav-link">Employés</a>
-      </li>
-      <li class="nav-item">
-          <a href="/statistiques" class="nav-link">Total Salaires</a>
+          <a href="/Employer-Controller" class="nav-link">Employes</a>
       </li>
       <li class="nav-item">
           <a href="/Salary-Slip" class="nav-link">Fiches de paie</a>
+      </li>
+      <li class="nav-item">
+          <a href="/statistiques" class="nav-link">Total Salaires</a>
       </li>
       <li class="nav-item">
       <li class="nav-item">

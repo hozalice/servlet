@@ -5,191 +5,207 @@
     <title>Graphique des salaires par mois</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0; padding: 0;
+            background-color: #f4f6f9;
+        }
+        .main-container {
+            width: 70%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h2 {
+            text-align: center;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+        .form-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        input[type="text"] {
+            padding: 8px 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            font-size: 16px;
+            background-color: #2E86DE;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
         .chart-container {
-            width: 900px;
-            height: 600px; /* Hauteur augmentée */
-            margin: 20px auto;
+            width: 100%;
+            height: 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
 <jsp:include page="sidebar.jsp" />
-<h2 style="text-align: center;">Évolution des Salaires et Composants</h2>
 
-<div class="chart-container">
-    <canvas id="salaryChart"></canvas>
+<div class="main-container">
+    <h2>Évolution des Composants de Salaire</h2>
+
+    <div class="form-container">
+        <form action="/graphe" method="get">
+            <label for="annee">Année :</label>
+            <input type="text" id="annee" name="annee" placeholder="ex : 2024"
+                   value="<%= request.getParameter("annee") != null ? request.getParameter("annee") : "" %>"/>
+            <button type="submit">Filtrer</button>
+        </form>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="salaryChart"></canvas>
+    </div>
 </div>
 
 <%
-    String rawJson = (String) request.getAttribute("allsalaryslip");
-    if (rawJson == null) rawJson = "[]";
+    String rawJson = (String) request.getAttribute("totals");
+    if (rawJson == null) rawJson = "{}";
 %>
+
 <script id="salary-data" type="application/json">
     <%= rawJson %>
 </script>
 
 <script>
-    try {
-        const rawJson = document.getElementById("salary-data").textContent;
-        const salaryData = JSON.parse(rawJson);
+    (function () {
+        try {
+            const rawJson = document.getElementById("salary-data").textContent;
+            const salaryData = JSON.parse(rawJson);
 
-        // Mois de 1 à 12 pour l'axe des abscisses
-        const allMonths = Array.from({length: 12}, (_, i) => 'Mois ' + (i + 1));
+            const earningsByMonth = salaryData.earningsByMonth || {};
+            const deductionsByMonth = salaryData.deductionsByMonth || {};
 
-        // Préparer les données pour le graphique
-        const totalData = new Array(12).fill(0);
-        const detailsData = {};
+            // Récupérer toutes les clés mois au format "YYYY-MM"
+            const rawMonths = Object.keys({ ...earningsByMonth, ...deductionsByMonth }).sort();
 
-        // Initialiser les structures pour chaque mois
-        allMonths.forEach(month => {
-            detailsData[month] = {};
-        });
+            // Tableau des noms courts des mois en français
+            const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
 
-        // Agrégation des données
-        salaryData.forEach(slip => {
-            const date = new Date(slip.posting_date);
-            const monthIndex = date.getMonth(); // 0-11
-            const monthLabel = 'Mois ' + (monthIndex + 1);
+            // Transformer "YYYY-MM" en "Mois" (ex : "2024-01" -> "Jan")
+            const allMonths = rawMonths.map(m => {
+                const monthIndex = parseInt(m.split("-")[1], 10) - 1;
+                return monthNames[monthIndex] || m;
+            });
 
-            // Calcul du total
-            const netPay = slip.net_pay || 0;
-            totalData[monthIndex] = (totalData[monthIndex] || 0) + netPay;
+            const allComponents = new Set();
 
-            // Traitement des gains
-            if (Array.isArray(slip.earnings)) {
-                slip.earnings.forEach(e => {
-                    const comp = e.salary_component || 'Gain Autre';
-                    detailsData[monthLabel][comp] = (detailsData[monthLabel][comp] || 0) + (e.amount || 0);
+            rawMonths.forEach(month => {
+                if (earningsByMonth[month]) {
+                    Object.keys(earningsByMonth[month]).forEach(c => allComponents.add(c));
+                }
+                if (deductionsByMonth[month]) {
+                    Object.keys(deductionsByMonth[month]).forEach(c => allComponents.add(c));
+                }
+            });
+
+            const saturatedColors = [
+                '#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#FFFF00', '#00FFFF',
+                '#FF4500', '#9400D3', '#008000', '#4B0082', '#FF8C00', '#7CFC00',
+                '#8A2BE2', '#DC143C', '#006400', '#9932CC', '#8B0000', '#483D8B'
+            ];
+
+            const datasets = [];
+            let colorIndex = 0;
+
+            allComponents.forEach(component => {
+                const data = rawMonths.map(month => {
+                    const earnings = earningsByMonth[month]?.[component] || 0;
+                    const deductions = deductionsByMonth[month]?.[component] || 0;
+                    return earnings + deductions; // déductions sont négatives déjà dans la méthode Java
                 });
-            }
-
-            // Traitement des déductions
-            if (Array.isArray(slip.deductions)) {
-                slip.deductions.forEach(d => {
-                    const comp = d.salary_component || 'Déduction Autre';
-                    detailsData[monthLabel][comp] = (detailsData[monthLabel][comp] || 0) - (d.amount || 0);
+                datasets.push({
+                    label: component,
+                    data: data,
+                    borderColor: saturatedColors[colorIndex % saturatedColors.length],
+                    backgroundColor: saturatedColors[colorIndex % saturatedColors.length] + "40",
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: false
                 });
-            }
-        });
+                colorIndex++;
+            });
 
-        // Extraire tous les types de composants uniques
-        const allComponents = new Set();
-        Object.values(detailsData).forEach(monthData => {
-            Object.keys(monthData).forEach(comp => allComponents.add(comp));
-        });
-
-        // Palette de couleurs saturées
-        const saturatedColors = [
-            '#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#FFFF00', '#00FFFF',
-            '#FF4500', '#9400D3', '#008000', '#4B0082', '#FF8C00', '#7CFC00',
-            '#8A2BE2', '#DC143C', '#006400', '#9932CC', '#8B0000', '#483D8B'
-        ];
-
-        // Préparer les données pour chaque composant
-        let colorIndex = 0;
-        const componentDatasets = Array.from(allComponents).map(comp => {
-            const data = allMonths.map(month => detailsData[month][comp] || 0);
-            const color = saturatedColors[colorIndex % saturatedColors.length];
-            colorIndex++;
-
-            return {
-                label: comp,
-                data: data,
-                borderColor: color,
-                backgroundColor: color + '40', // Ajoute de la transparence
-                borderWidth: 3, // Ligne plus épaisse
-                tension: 0.3, // Courbure légèrement augmentée
-                fill: false,
-                order: 1
-            };
-        });
-
-        // Créer le graphique
-        const ctx = document.getElementById('salaryChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: allMonths,
-                datasets: [
-                    {
-                        label: 'Total des salaires',
-                        data: totalData,
-                        borderColor: '#2E86DE',
-                        backgroundColor: '#2E86DE40',
-                        borderWidth: 4,
-                        tension: 0.3,
-                        fill: false,
-                        order: 0
-                    },
-                    ...componentDatasets
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
+            const ctx = document.getElementById('salaryChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: allMonths,
+                    datasets: datasets
                 },
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Évolution des Salaires et Composants',
-                        font: {
-                            size: 16
-                        }
-                    },
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 12,
-                            padding: 20,
-                            font: {
-                                size: 12
-                            }
-                        }
-                    },
-                    tooltip: {
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
                         mode: 'index',
                         intersect: false
-                    }
-                },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
+                    },
+                    plugins: {
                         title: {
                             display: true,
-                            text: 'Montant (USD)',
-                            font: {
-                                weight: 'bold'
+                            text: 'Évolution des Composants de Salaire',
+                            font: { size: 18 }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 20,
+                                font: { size: 12 }
                             }
                         },
-                        beginAtZero: false,
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
                         }
                     },
-                    x: {
-                        grid: {
-                            display: false
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Montant (Ar)',
+                                font: { weight: 'bold' }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Mois'
+                            }
+                        }
+                    },
+                    elements: {
+                        point: {
+                            radius: 4,
+                            hoverRadius: 6
                         }
                     }
-                },
-                elements: {
-                    point: {
-                        radius: 4, // Points plus visibles
-                        hoverRadius: 6
-                    }
                 }
-            }
-        });
-
-    } catch (error) {
-        console.error("Erreur lors du traitement des données :", error);
-    }
+            });
+        } catch (error) {
+            console.error("Erreur lors du chargement du graphique :", error);
+        }
+    })();
 </script>
+
 
 </body>
 </html>

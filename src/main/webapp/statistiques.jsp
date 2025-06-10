@@ -166,7 +166,7 @@
       <td>
         <form method="get" action="/salaries" style="margin:0;">
           <input type="hidden" name="month" value="<%= moisAffiche %>" />
-          <input type="year" name="year" value="<%= (!"Toutes".equals(anneeStr)) ? anneeStr : "" %>" />
+          <input type="hidden" name="year" value="<%= (!"Toutes".equals(anneeStr)) ? anneeStr : "" %>" />
           <input type="submit" value="Voir détails" style="background-color:#2e86de; color:white; border:none; padding:6px 10px; border-radius:5px; cursor:pointer;" />
         </form>
       </td>

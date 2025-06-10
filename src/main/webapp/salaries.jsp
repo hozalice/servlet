@@ -133,11 +133,11 @@
         }
         form select:focus {
             outline: none;
-            border-color: #3b82f6;
+            border-color: #055160;
             box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
         }
         form input[type="submit"] {
-            background-color: #3b82f6;
+            background-color:#055160;
             color: #fff;
             border: none;
             border-radius: 0.375rem;
@@ -149,7 +149,7 @@
             white-space: nowrap;
         }
         form input[type="submit"]:hover {
-            background-color: #2563eb;
+            background-color: #055160;
         }
 
         /* Alert Style */
@@ -166,7 +166,7 @@
         }
         .alert-info {
             background-color: #dbeafe;
-            color: #1e40af;
+            color: #055160;
             border: 1px solid #93c5fd;
         }
 
@@ -185,7 +185,7 @@
             overflow: hidden;
         }
         thead tr {
-            background-color: #3b82f6;
+            background-color: #055160;
         }
         thead th {
             color: white;
@@ -239,9 +239,9 @@
             padding: 0.375rem 0.75rem;
             font-size: 0.875rem;
             font-weight: 600;
-            color: #3b82f6;
+            color: #055160;
             background-color: transparent;
-            border: 2px solid #3b82f6;
+            border: 2px solid #055160;
             border-radius: 0.5rem;
             cursor: pointer;
             text-decoration: none;
@@ -251,25 +251,25 @@
             margin-right: 0.4rem;
         }
         .btn.btn-primary {
-            background-color: #3b82f6;
+            background-color: #4a5568;
             color: white;
-            border-color: #3b82f6;
+            border-color: #4a5568;
         }
         .btn.btn-primary:hover,
         .btn.btn-primary:focus {
-            background-color: #2563eb;
-            border-color: #2563eb;
+            background-color:#4a5568;
+            border-color: #4a5568;
             color: white;
             outline: none;
         }
         .btn:focus {
-            outline: 2px solid #2563eb;
+            outline: 2px solid #4a5568;
             outline-offset: 2px;
         }
 
         /* Salary cards improvements */
         .salary-card {
-            border: 1px solid #3b82f6;
+            border: 1px solid #4a5568;
             border-radius: 0.75rem;
             padding: 1.25rem 1.5rem;
             background-color: #f9fafb;
@@ -280,7 +280,7 @@
             box-shadow: 0 6px 12px rgba(59,130,246,0.25);
         }
         .salary-card h6 {
-            color: #1e40af;
+            color:#4a5568;
             font-weight: 700;
             font-size: 1.125rem;
             margin-bottom: 0.75rem;
@@ -296,7 +296,7 @@
             box-shadow: 0 3px 8px rgba(0,0,0,0.08);
         }
         #totalsContainer .table th {
-            background-color: #2563eb;
+            background-color: #4a5568;
             color: #fafafa;
             font-weight: 600;
             padding: 1rem 1.5rem;
@@ -310,7 +310,7 @@
         }
         #totalsContainer .table tr.table-info td {
             background-color: #dbeafe;
-            color: #1e3a8a;
+            color: #4a5568;
             font-weight: 600;
         }
         #totalsContainer .table tr.table-warning td {
@@ -325,7 +325,7 @@
         }
         #totalsContainer .table tr.table-primary td {
             background-color: #bfdbfe;
-            color: #1e40af;
+            color: #4a5568;
             font-weight: 700;
         }
 
@@ -333,7 +333,7 @@
         .accordion-button {
             font-weight: 600;
             font-size: 1rem;
-            color: #2563eb;
+            color: #4a5568;
             background: transparent;
             border: none;
             display: flex;
@@ -347,14 +347,14 @@
         }
         .accordion-button:hover,
         .accordion-button:focus {
-            color: #1e40af;
+            color: #4a5568;
             outline: none;
         }
         .accordion-button:after {
             content: '▼';
             font-size: 0.85rem;
             transition: transform 0.3s ease;
-            color: #2563eb;
+            color: #4a5568;
             margin-left: 1rem;
         }
         .accordion-button[aria-expanded="true"]:after {
