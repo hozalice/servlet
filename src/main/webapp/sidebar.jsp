@@ -17,16 +17,10 @@
       </li>
       <li class="nav-item">
       <li class="nav-item">
-          <a href="/salaries" class="nav-link">Salaire Employee</a>
+          <a href="/salaries" class="nav-link">Detail Fiche de paye</a>
       </li>
       <li class="nav-item">
-          <a href="#" class="nav-link">Formation</a>
-      </li>
-      <li class="nav-item">
-          <a href="#" class="nav-link">Évaluation</a>
-      </li>
-      <li class="nav-item">
-          <a href="#" class="nav-link">Rapports</a>
+          <a href="/graphe" class="nav-link">Graphe</a>
       </li>
   </ul>
 </nav>
