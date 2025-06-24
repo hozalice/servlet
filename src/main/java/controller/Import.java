@@ -862,6 +862,13 @@ public class Import extends HttpServlet {
             data.addProperty("posting_date", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
             data.addProperty("docstatus", 1); // DIRECTEMENT SOUMIS
             System.out.println("JSON envoyé: " + gson.toJson(data));
+            System.out.println(employeeName);
+            System.out.println(getEmployeeFullNameByEmployeeNumber(paie.getRefEmploye(), sid));
+            System.out.println(paie.getSalaire());
+            System.out.println(new SimpleDateFormat("yyyy-MM-dd").format(moisDebut));
+            System.out.println(new SimpleDateFormat("yyyy-MM-dd").format(moisFin));
+            System.out.println(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+            System.out.println("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
             HttpRequest requestPost = HttpRequest.newBuilder()
                     .uri(URI.create(apiBaseUrl + "Salary%20Slip"))
                     .header("Content-Type", "application/json")

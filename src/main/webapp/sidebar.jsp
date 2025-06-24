@@ -22,6 +22,9 @@
       <li class="nav-item">
           <a href="/graphe" class="nav-link">Graphe</a>
       </li>
+      <li class="nav-item">
+          <a href="/Salary-form" class="nav-link">Insert Salary Structure</a>
+      </li>
   </ul>
 </nav>
 

@@ -99,7 +99,37 @@
             </div>
         </div>
     </div>
+    <form action="/Generate" method="GET">
 
+    <div class="form-row">
+        <div class="form-group">
+            <label for="employee">Employé:</label>
+            <input id="employee" name="employee" value = <%= employee.has("employee") ? employee.get("employee").getAsString() : "-" %> readonly>
+            <label for="employeename">Employé name:</label>
+            <input id="employeename" name="anarana" value = <%= employee.has("employee_name") ? employee.get("employee_name").getAsString() : "-" %> readonly>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="start_date">Date de début:</label>
+            <input type="date" id="start_date" name="start_date" required>
+        </div>
+        <div class="form-group">
+            <label for="end_date">Date de fin:</label>
+            <input type="date" id="end_date" name="end_date" required>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+
+            <label for="amount">Valeru du salaire</label>
+            <input type="number" id="amount" name="salaire" >
+        </div>
+    </div>
+    <button type="submit">valider et generer</button>
+    </form>
     <div class="card">
         <div class="card-header bg-primary text-white">
             <h4 class="mb-0">Fiches de paie</h4>

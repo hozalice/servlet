@@ -86,7 +86,7 @@ public class SalarySlipExport extends HttpServlet {
         document.add(title);
 
         // Informations de base
-        PdfPTable infoTable = new PdfPTable(2);
+        PdfPTable infoTable = new PdfPTable(3);
         infoTable.setWidthPercentage(100);
         infoTable.setSpacingAfter(15);
 

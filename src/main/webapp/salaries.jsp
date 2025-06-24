@@ -704,10 +704,13 @@
                                                                     JsonObject d = deduction.getAsJsonObject();
                                                                     String label = d.get("salary_component").getAsString();
                                                                     double amount = d.get("amount").getAsDouble();
+                                                                    if (amount<0){
+                                                                        amount = (-1)*amount;
+                                                                    }
                                                                 %>
                                                                 <tr>
                                                                     <td><%= label %></td>
-                                                                    <td class="text-end">-<%= formatter.format(amount) %> Ar</td>
+                                                                    <td class="text-end"><%= formatter.format(amount) %> Ar</td>
                                                                 </tr>
                                                                 <% } %>
                                                                 </tbody>
@@ -717,10 +720,21 @@
                                                     <% }
                                                     } %>
 
-                                                    <div class="text-end mt-3">
-                                                        <a href="/Salary-Export?namesalaryslip=<%= URLEncoder.encode(slipName, "UTF-8") %>" class="btn btn-primary" aria-label="Exporter la fiche de paie <%= slipName %> en PDF">
-                                                            <i class="bi bi-download"></i> Exporter en PDF
-                                                        </a>
+                                                    <!-- Affichage du salaire net -->
+                                                    <div class="row mt-3">
+                                                        <div class="col-md-6">
+                                                            <div class="alert alert-primary mb-0" role="alert">
+                                                                <h5 class="alert-heading">Salaire Net</h5>
+                                                                <p class="mb-0 fs-4 fw-bold">
+                                                                    <%= formatter.format(netSalary) %> Ar
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 text-end">
+                                                            <a href="/Salary-Export?namesalaryslip=<%= URLEncoder.encode(slipName, "UTF-8") %>" class="btn btn-primary" aria-label="Exporter la fiche de paie <%= slipName %> en PDF">
+                                                                <i class="bi bi-download"></i> Exporter en PDF
+                                                            </a>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <% } %>
