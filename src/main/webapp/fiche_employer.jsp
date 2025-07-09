@@ -74,6 +74,63 @@
             color: #6c757d;
             padding: 20px;
         }
+        /* Style pour le formulaire de génération de fiche de paie */
+        form[action="/Generate"] {
+            background: #f1f3f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        form[action="/Generate"] h2 {
+            font-size: 1.3rem;
+            margin-bottom: 18px;
+            color: #0d6efd;
+        }
+        form[action="/Generate"] .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        form[action="/Generate"] .form-group {
+            flex: 1 1 200px;
+            display: flex;
+            flex-direction: column;
+        }
+        form[action="/Generate"] label {
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #495057;
+        }
+        form[action="/Generate"] input[type="text"],
+        form[action="/Generate"] input[type="number"],
+        form[action="/Generate"] input[type="date"] {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 7px 10px;
+            margin-bottom: 8px;
+            background: #fff;
+        }
+        form[action="/Generate"] input[readonly] {
+            background: #e9ecef;
+        }
+        form[action="/Generate"] input[type="checkbox"] {
+            margin-right: 6px;
+        }
+        form[action="/Generate"] button[type="submit"] {
+            background: #0d6efd;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 22px;
+            font-weight: 500;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        form[action="/Generate"] button[type="submit"]:hover {
+            background: #0b5ed7;
+        }
     </style>
   </style>
 </head>
@@ -100,15 +157,17 @@
         </div>
     </div>
     <form action="/Generate" method="GET">
+        <h2>Generer SSA et une Salary slip</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="employee">Employé:</label>
+                <input id="employee" name="employee" value="<%= employee.has("employee") ? employee.get("employee").getAsString() : "-" %>" readonly>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label for="employee">Employé:</label>
-            <input id="employee" name="employee" value = <%= employee.has("employee") ? employee.get("employee").getAsString() : "-" %> readonly>
-            <label for="employeename">Employé name:</label>
-            <input id="employeename" name="anarana" value = <%= employee.has("employee_name") ? employee.get("employee_name").getAsString() : "-" %> readonly>
+                <label for="employeename">Nom de l'employé:</label>
+                <input id="employeename" name="anarana" value="<%= employee.has("employee_name") ? employee.get("employee_name").getAsString() : "-" %>">
+            </div>
         </div>
-    </div>
+
 
     <div class="form-row">
         <div class="form-group">
@@ -128,6 +187,13 @@
             <input type="number" id="amount" name="salaire" >
         </div>
     </div>
+        <div class="form-row">
+            <div class="form-group">
+                <input type="checkbox" id="ecraser" name="ecraser" value="1" >ecraser
+                <br>
+                <input type="checkbox" id="moyenne" name="moyenne" value="1" >moyenne de salaire
+            </div>
+        </div>
     <button type="submit">valider et generer</button>
     </form>
     <div class="card">
@@ -135,7 +201,7 @@
             <h4 class="mb-0">Fiches de paie</h4>
         </div>
         <div class="card-body">
-            <% if (salarySlips.size() > 0) { 
+            <% if (salarySlips.size() > 0) {
                 for (JsonElement slipElement : salarySlips) {
                     JsonObject slip = slipElement.getAsJsonObject();
                     String slipName = slip.has("name") ? slip.get("name").getAsString() : "";
@@ -160,6 +226,7 @@
                             <div class="col-md-6">
                                 <p><strong>Salaire net :</strong> <span class="text-success fw-bold"><%= formatter.format(netPay) %> Ar</span></p>
                             </div>
+
                         </div>
                         <div class="text-end mt-2">
                             <a href="/Salary-Export?namesalaryslip=<%= slipName %>" class="btn btn-sm btn-primary">
@@ -168,7 +235,7 @@
                         </div>
                     </div>
                 </div>
-            <% } 
+            <% }
             } else { %>
                 <div class="alert alert-info mb-0">
                     Aucune fiche de paie disponible pour cet employé.

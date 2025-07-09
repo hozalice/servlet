@@ -47,6 +47,9 @@ public class Import extends HttpServlet {
         this.httpClient = HttpClient.newHttpClient();
         this.gson = new Gson();
         this.dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+        // Désactivation du mode tolérant pour refuser les dates hors format ou
+        // impossibles
+        this.dateFormat.setLenient(false);
     }
 
     @Override
@@ -362,6 +365,12 @@ public class Import extends HttpServlet {
                 }
 
                 try {
+                    // Vérification stricte du format de date (dd/MM/yyyy)
+                    if (!parts[0].matches("\\d{2}/\\d{2}/\\d{4}")) {
+                        erreurs.add("Fichier Paies : ligne " + lineNumber
+                                + " - Format de date invalide (attendu dd/MM/yyyy)");
+                        continue;
+                    }
                     Date mois = dateFormat.parse(parts[0]);
                     int salaireBase = Integer.parseInt(parts[2]);
 
@@ -752,7 +761,8 @@ public class Import extends HttpServlet {
             Date moisDebut = cal.getTime();
             System.out.println("reference emplyer ----------------------------------------->" + paie.getRefEmploye());
             String employeeName = getEmployeeNameByEmployeeNumber(paie.getRefEmploye(), sid);
-
+            System.out.println("+6+6+6+6+6+6+6+6+6+6+6+6+6+6+6++6+6+6+6+6+6+6");
+            System.out.println(paie.getRefEmploye());
             JsonObject data = new JsonObject();
             data.addProperty("doctype", "Salary Structure Assignment");
             data.addProperty("employee", employeeName);
@@ -880,7 +890,7 @@ public class Import extends HttpServlet {
 
             if (responsePost.statusCode() != 200) {
                 return new Result(false, "POST Salary Slip failed: " + responsePost.body());
-            }else {
+            } else {
                 System.out.println("Status code: " + responsePost.statusCode());
                 System.out.println("Response body: " + responsePost.body());
             }

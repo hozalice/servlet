@@ -23,7 +23,10 @@
           <a href="/graphe" class="nav-link">Graphe</a>
       </li>
       <li class="nav-item">
-          <a href="/Salary-form" class="nav-link">Insert Salary Structure</a>
+          <a href="/Update" class="nav-link">update Salary</a>
+      </li>
+      <li class="nav-item">
+          <a href="/recherche" class="nav-link">Page de recherche</a>
       </li>
   </ul>
 </nav>
